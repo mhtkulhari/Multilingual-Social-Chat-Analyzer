@@ -1,24 +1,26 @@
+import streamlit as st
+import os
 import re
 import pandas as pd
-import os, json, tempfile
-import streamlit as st
-from google.cloud import translate_v2 as translate
-from tqdm import tqdm
 import html
+import json
+from google.cloud import translate_v2 as translate
+from google.oauth2.service_account import Credentials
 
-# Load the JSON string from st.secrets:
-sa_json_str = st.secrets["gcp"]["service_account"]
+# --- Initialize translation client with service account from secrets ---
+sa_json_str = st.secrets.get("gcp", {}).get("service_account")
+if sa_json_str:
+    try:
+        sa_info = json.loads(sa_json_str)
+        creds = Credentials.from_service_account_info(sa_info)
+        translate_client = translate.Client(credentials=creds)
+    except Exception as e:
+        st.error("Failed to load GCP credentials: {}".format(e))
+        translate_client = translate.Client()
+else:
+    # Fallback to default credentials (local env var)
+    translate_client = translate.Client()
 
-# Write it to a temporary file at runtime:
-with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as fp:
-    fp.write(sa_json_str)
-    creds_path = fp.name
-
-# Tell GCP SDK to use that file:
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
-
-# Initialize the translate client
-translate_client = translate.Client()
 
 def parse_whatsapp_chat(file_content):
     # Split the content into lines
@@ -37,7 +39,6 @@ def parse_whatsapp_chat(file_content):
     ]
     system_message_regex = re.compile('|'.join(system_patterns), re.IGNORECASE)
 
-    # Functions inside the main function
     def is_system_message(line):
         return bool(system_message_regex.search(line))
 
@@ -78,37 +79,25 @@ def parse_whatsapp_chat(file_content):
                 'Message': message
             })
 
-    # If no valid chat data, return an empty dataframe
     if not chat_data:
         return pd.DataFrame()
 
     df = pd.DataFrame(chat_data)
-
-    # Combine Date and Time columns to create a Datetime column
     df['Datetime'] = pd.to_datetime(df['Date'] + ' ' + df['Time'], format='%d/%m/%Y %I:%M %p', errors='coerce')
-
-    # Extract additional date/time components
     df['year'] = df['Datetime'].dt.year
     df['month_num'] = df['Datetime'].dt.month
-    df['month'] = df['Datetime'].dt.strftime('%b')  # Month name (Jan, Feb, ...)
+    df['month'] = df['Datetime'].dt.strftime('%b')
     df['day'] = df['Datetime'].dt.day
-    df['day_name'] = df['Datetime'].dt.strftime('%a')  # Day name (Mon, Tue, ...)
+    df['day_name'] = df['Datetime'].dt.strftime('%a')
     df['hour'] = df['Datetime'].dt.hour.apply(lambda x: str(x).zfill(2))
     df['minute'] = df['Datetime'].dt.minute
-    # Create the 'period' column by combining hours in a formatted way
-    df['period'] = df['hour'].apply(lambda x: f"{x}-{str(int(x) + 1).zfill(2) if int(x) < 23 else '00'}")
-    
+    df['period'] = df['hour'].apply(lambda x: f"{x}-{str(int(x)+1).zfill(2) if int(x)<23 else '00'}")
 
-    # Step 3: Merge consecutive messages
     merged_chat = []
     current_row = df.iloc[0].copy()
-
     for idx in range(1, len(df)):
         row = df.iloc[idx]
-        same_speaker = current_row['Speaker'] == row['Speaker']
-        same_date = current_row['Date'] == row['Date']
-
-        if same_speaker and same_date:
+        if current_row['Speaker'] == row['Speaker'] and current_row['Date'] == row['Date']:
             time_diff = (row['Datetime'] - current_row['Datetime']).total_seconds() / 60.0
             if 0 <= time_diff <= 10:
                 current_row['Message'] += '. ' + row['Message']
@@ -118,39 +107,22 @@ def parse_whatsapp_chat(file_content):
         else:
             merged_chat.append(current_row)
             current_row = row.copy()
-
     merged_chat.append(current_row)
-
-    # Now we create merged_df
     merged_df = pd.DataFrame(merged_chat)
 
-    # Translate the messages to English
+    # Translate to English
     merged_df['Translated_Message'] = merged_df['Message'].apply(translate_text_smart)
-
-    # Select desired columns
-    merged_df = merged_df[['Date', 'Time', 'Speaker', 'Message', 'Translated_Message', 'year', 'month_num', 'month', 'day', 'day_name', 'hour', 'minute','period']]
-
-    return merged_df
+    return merged_df[['Date','Time','Speaker','Message','Translated_Message','year','month_num','month','day','day_name','hour','minute','period']]
 
 
-# Function to translate text using Google Translate API
 def translate_text_smart(text):
     if pd.isnull(text) or not str(text).strip():
-        return text  # Skip empty or NaN
-
+        return text
     try:
-        # Detect language first
-        detection = translate_client.detect_language(text)
-        detected_lang = detection['language']
-
-        if detected_lang == 'en':
-            # Already English, no need to translate
+        det = translate_client.detect_language(text)
+        if det.get('language') == 'en':
             return text
-        else:
-            # Translate if not English
-            result = translate_client.translate(text, target_language='en')
-            translated_text = result['translatedText']
-            return html.unescape(translated_text)
-
-    except Exception as e:
+        res = translate_client.translate(text, target_language='en')
+        return html.unescape(res.get('translatedText',''))
+    except Exception:
         return text
