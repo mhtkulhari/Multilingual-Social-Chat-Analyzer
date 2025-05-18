@@ -36,10 +36,7 @@ h1, .css-18e3th9 {
 .stButton>button:hover {
   background-color: #1fc4bf !important;
 }
-/* Make 'Show Analysis' button text bold */
-section[data-testid="stSidebar"] button {
-    font-weight: bold;
-}
+
 
 /* 6. DataFrame zebra row striping */
 .stDataFrame table tbody tr:nth-child(odd) {
@@ -55,7 +52,12 @@ section[data-testid="stSidebar"] button {
   margin: 0.5rem 0 !important;
 }
 
-/* Show pointer cursor when hovering over any Streamlit selectbox */
-[data-baseweb="select"] > div:first-child:hover {
+/* make the select‐box control show the pointer cursor on hover */
+.stSidebar [data-baseweb="select"] > div:first-child:hover {
+  cursor: pointer !important;
+}
+
+/* ensure the dropdown items themselves also show the pointer */
+.stSidebar [role="option"]:hover {
   cursor: pointer !important;
 }
