@@ -24,7 +24,7 @@ mpl.rcParams['axes.unicode_minus'] = False  # To handle minus signs correctly
 
 st.sidebar.title("SOCIAL CHAT ANALYZER")
 
-uploaded_file = st.sidebar.file_uploader("Export Whatsapp Chat")
+uploaded_file = st.sidebar.file_uploader("Upload WhatsApp Chat")
 if uploaded_file is not None:
     # Get file content as text
     file_content = uploaded_file.getvalue().decode("utf-8")
@@ -38,9 +38,9 @@ if uploaded_file is not None:
     # Fetch unique Speakers
     Speaker_list = df['Speaker'].unique().tolist()
     Speaker_list.sort()
-    Speaker_list.insert(0, "Everyone")
+    Speaker_list.insert(0, "Overall")
 
-    selected_Speaker = st.sidebar.selectbox("Show analysis for", Speaker_list)
+    selected_Speaker = st.sidebar.selectbox("Show analysis wrt", Speaker_list)
 
     if st.sidebar.button("Show Analysis"):
 
