@@ -44,24 +44,31 @@ if uploaded_file is not None:
 
     if st.sidebar.button("Show Analysis"):
 
-        # Stats Area
-        num_messages, words, num_media_messages, num_links = helper.fetch_stats(selected_Speaker,df)
-        st.title("Top Statistics")
-        col1, col2, col3, col4 = st.columns(4)
+        # # Stats Area
+        # num_messages, words, num_media_messages, num_links = helper.fetch_stats(selected_Speaker,df)
+        # st.title("Top Statistics")
+        # col1, col2, col3, col4 = st.columns(4)
 
-        with col1:
-            st.header("Total Messages")
-            st.title(num_messages)
-        with col2:
-            st.header("Total Words")
-            st.title(words)
-        with col3:
-            st.header("Media Shared")
-            st.title(num_media_messages)
-        with col4:
-            st.header("Links Shared")
-            st.title(num_links)
-
+        # with col1:
+        #     st.header("Total Messages")
+        #     st.title(num_messages)
+        # with col2:
+        #     st.header("Total Words")
+        #     st.title(words)
+        # with col3:
+        #     st.header("Media Shared")
+        #     st.title(num_media_messages)
+        # with col4:
+        #     st.header("Links Shared")
+        #     st.title(num_links)
+        # --- Top Stats ---
+        msgs, words, media, links = helper.fetch_stats(selected_Speaker,df)
+        st.title("🔢 Top Statistics")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Messages", msgs)
+        c2.metric("Words", words)
+        c3.metric("Media", media)
+        c4.metric("Links", links)
         # monthly timeline
         st.title("Monthly Timeline")
         timeline = helper.monthly_timeline(selected_Speaker,df)
