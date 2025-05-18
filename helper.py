@@ -6,13 +6,13 @@ from collections import Counter
 import emoji
 from wordcloud import WordCloud
 import re
-
-
+import seaborn as sns
+from matplotlib.ticker import MaxNLocator
 
 
 def fetch_stats(selected_Speaker,df):
 
-    if selected_Speaker != 'Overall':
+    if selected_Speaker != 'Everyone':
         df = df[df['Speaker'] == selected_Speaker]
 
     # fetch the number of Messages
@@ -40,7 +40,7 @@ def most_busy_Speakers(df):
     return x,df
 
 def create_wordcloud(selected_Speaker, df):
-    if selected_Speaker != 'Overall':
+    if selected_Speaker != 'Everyone':
         df = df[df['Speaker'] == selected_Speaker]
 
     temp = df.copy()
@@ -64,7 +64,7 @@ def create_wordcloud(selected_Speaker, df):
     return wc
 
 def most_common_words(selected_Speaker, df):
-    if selected_Speaker != 'Overall':
+    if selected_Speaker != 'Everyone':
         df = df[df['Speaker'] == selected_Speaker]
 
     temp = df.copy()
@@ -86,7 +86,7 @@ def most_common_words(selected_Speaker, df):
 
 
 def emoji_helper(selected_Speaker, df):
-    if selected_Speaker != 'Overall':
+    if selected_Speaker != 'Everyone':
         df = df[df['Speaker'] == selected_Speaker]
     
     emojis = []
@@ -106,7 +106,7 @@ def emoji_helper(selected_Speaker, df):
 
 def monthly_timeline(selected_Speaker,df):
 
-    if selected_Speaker != 'Overall':
+    if selected_Speaker != 'Everyone':
         df = df[df['Speaker'] == selected_Speaker]
 
     timeline = df.groupby(['year', 'month_num', 'month']).count()['Message'].reset_index()
@@ -120,7 +120,7 @@ def monthly_timeline(selected_Speaker,df):
     return timeline
 
 def daily_timeline(selected_Speaker, df):
-    if selected_Speaker != 'Overall':
+    if selected_Speaker != 'Everyone':
         df = df[df['Speaker'] == selected_Speaker]
 
     # Convert 'Date' column to datetime format
@@ -137,23 +137,62 @@ def daily_timeline(selected_Speaker, df):
 
 def week_activity_map(selected_Speaker,df):
 
-    if selected_Speaker != 'Overall':
+    if selected_Speaker != 'Everyone':
         df = df[df['Speaker'] == selected_Speaker]
 
     return df['day_name'].value_counts()
 
 def month_activity_map(selected_Speaker,df):
 
-    if selected_Speaker != 'Overall':
+    if selected_Speaker != 'Everyone':
         df = df[df['Speaker'] == selected_Speaker]
 
     return df['month'].value_counts()
 
-def activity_heatmap(selected_Speaker,df):
+def activity_heatmap(selected_Speaker, df):
+    d = df if selected_Speaker == 'Everyone' else df[df['Speaker'] == selected_Speaker]
+    pt = d.pivot_table(
+        index='day_name',
+        columns='period',
+        values='Message',
+        aggfunc='count'
+    ).fillna(0)
+    order = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+    return pt.reindex(order)
 
-    if selected_Speaker != 'Overall':
-        df = df[df['Speaker'] == selected_Speaker]
+def plot_heatmap(pt, ax):
+    # Convert to integers
+    pt_int = pt.fillna(0).astype(int)
+    max_count = pt_int.values.max()
 
-    Speaker_heatmap = df.pivot_table(index='day_name', columns='period', values='Message', aggfunc='count').fillna(0)
+    # Build annotation matrix: only the max per row
+    annot = pd.DataFrame("", index=pt_int.index, columns=pt_int.columns)
+    for day in pt_int.index:
+        row = pt_int.loc[day]
+        m = row.max()
+        # mark all periods that hit the max (usually one)
+        for period, val in row.items():
+            if val == m and m > 0:
+                annot.at[day, period] = str(m)
 
-    return Speaker_heatmap
+    sns.heatmap(
+        pt_int,
+        annot=annot,
+        fmt="",
+        cmap='Blues',
+        vmin=0,
+        vmax=max_count,
+        cbar_kws={
+            'label': 'Messages',
+            'ticks': list(range(0, max_count + 1, max(1, max_count // 5)))
+        },
+        ax=ax
+    )
+
+    # Force integer colorbar ticks
+    cbar = ax.collections[0].colorbar
+    cbar.ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+    # Labels
+    ax.set_xlabel("Hour Period", fontsize=10)
+    ax.set_ylabel("Day of Week", fontsize=10)
