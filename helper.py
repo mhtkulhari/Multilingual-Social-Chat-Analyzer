@@ -194,5 +194,5 @@ def plot_heatmap(pt, ax):
     cbar.ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
     # Labels
-    ax.set_xlabel("Hour Period", fontsize=10)
-    ax.set_ylabel("Day of Week", fontsize=10)
+    ax.set_xlabel("Hour Period", fontsize=11)
+    ax.set_ylabel("Day", fontsize=11)
