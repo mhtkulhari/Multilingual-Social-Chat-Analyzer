@@ -5,9 +5,11 @@ import streamlit as st
 secret_blob = st.secrets.get("gcp", {}).get("service_account")
 st.write("🔍 Secret loaded:", bool(secret_blob), "— length:", len(secret_blob or ""))
 
-# Optionally peek at the first 100 chars (redact the rest)
-st.write("Preview:", (secret_blob or "")[:100] + "…")
-st.stop()  # stop here so you can see these messages
+# Show the full JSON blob
+st.code(secret_blob or "", language="json")
+
+st.stop()  # halt execution so you can inspect
+
 
 import preprocessor
 import helper
