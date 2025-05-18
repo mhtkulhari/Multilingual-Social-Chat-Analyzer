@@ -24,7 +24,7 @@ mpl.rcParams['axes.unicode_minus'] = False  # To handle minus signs correctly
 
 st.sidebar.title("SOCIAL CHAT ANALYZER")
 
-uploaded_file = st.sidebar.file_uploader("Choose a file")
+uploaded_file = st.sidebar.file_uploader("Export Whatsapp Chat")
 if uploaded_file is not None:
     # Get file content as text
     file_content = uploaded_file.getvalue().decode("utf-8")
