@@ -1,17 +1,17 @@
-#app.py
-
-
 
 import streamlit as st
 import preprocessor
 import helper
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
-import seaborn as sns
-import matplotlib as mpl
 
-with open("static/style.css") as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+import matplotlib as mpl
+from matplotlib.ticker import MultipleLocator
+
+# Inject custom CSS (read as UTF-8)
+with open("static/style.css", "r", encoding="utf-8") as f:
+   css = f.read()
+   st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 # -- UI setup for font --
 font_path = 'NotoSans-Regular.ttf'  # Replace with your font file name
@@ -44,76 +44,99 @@ if uploaded_file is not None:
 
     if st.sidebar.button("Show Analysis"):
 
-        # # Stats Area
-        # num_messages, words, num_media_messages, num_links = helper.fetch_stats(selected_Speaker,df)
-        # st.title("Top Statistics")
-        # col1, col2, col3, col4 = st.columns(4)
-
-        # with col1:
-        #     st.header("Total Messages")
-        #     st.title(num_messages)
-        # with col2:
-        #     st.header("Total Words")
-        #     st.title(words)
-        # with col3:
-        #     st.header("Media Shared")
-        #     st.title(num_media_messages)
-        # with col4:
-        #     st.header("Links Shared")
-        #     st.title(num_links)
-        # --- Top Stats ---
         msgs, words, media, links = helper.fetch_stats(selected_Speaker,df)
         st.title("🔢 Top Statistics")
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Messages", msgs)
+        c1.metric("Total Messages", msgs)
         c2.metric("Words", words)
         c3.metric("Media", media)
         c4.metric("Links", links)
-        # monthly timeline
-        st.title("Monthly Timeline")
-        timeline = helper.monthly_timeline(selected_Speaker,df)
-        fig,ax = plt.subplots()
-        ax.plot(timeline['time'], timeline['Message'],color='green')
-        plt.xticks(rotation='vertical')
-        st.pyplot(fig)
 
-        # Daily timeline
-        st.title("Daily Timeline")
-        daily_timeline = helper.daily_timeline(selected_Speaker, df)
-        fig, ax = plt.subplots()
-        ax.plot(daily_timeline['Date'], daily_timeline['Message'], color='black')
-        plt.xticks(rotation='vertical')
-        st.pyplot(fig)
+
+        # --- Monthly Timeline (full-width) ---
+        st.subheader("📈 Monthly Timeline")
+        fig, ax = plt.subplots(figsize=(9, 4))   # wide (16), same height (4)
+        t = helper.monthly_timeline(selected_Speaker, df)
+        ax.plot(t['time'], t['Message'], marker='o', label='Messages per Month')
+        ax.set_xlabel("Month-Year", fontsize=11)
+        ax.set_ylabel("Number of Messages", fontsize=11)
+        # Force integer y‐axis
+        ax.set_ylim(0, t['Message'].max() + 1)
+        ax.yaxis.set_major_locator(MultipleLocator(1))
+        ax.set_yticklabels([f"{int(y)}" for y in ax.get_yticks()])
+        ax.set_xticks(range(len(t['time'])))
+        ax.set_xticklabels(t['time'], rotation=90, ha='right')
+
+        ax.grid(axis='y', linestyle='--', alpha=0.5)
+        ax.legend(fontsize=9)
+        st.pyplot(fig, clear_figure=True)
+
+        # --- Daily Timeline (full-width) ---
+        st.subheader("📅 Daily Timeline")
+        fig, ax = plt.subplots(figsize=(9, 4))   # wide (16), same height (4)
+        d = helper.daily_timeline(selected_Speaker, df)
+        ax.plot(d['Date'], d['Message'], marker='.', label='Messages per Day')
+        ax.set_xlabel("Date", fontsize=11)
+        ax.set_ylabel("Number of Messages", fontsize=11)
+        # Force integer y‐axis
+        ax.set_ylim(0, d['Message'].max() + 1)
+        ax.yaxis.set_major_locator(MultipleLocator(1))
+        ax.set_yticklabels([f"{int(y)}" for y in ax.get_yticks()])
+        ax.set_xticks(d['Date'])
+        ax.set_xticklabels(d['Date'].dt.strftime('%d-%b-%Y'), rotation=90, ha='right')
+
+        ax.grid(axis='y', linestyle='--', alpha=0.5)
+        ax.legend(fontsize=9)
+        st.pyplot(fig, clear_figure=True)
+
+
+
+        
 
 
         # activity map
-        st.title('Activity Map')
-        col1,col2 = st.columns(2)
+        st.title('🗓️ Activity Map')
 
-        with col1:
-            st.header("Most busy day")
-            busy_day = helper.week_activity_map(selected_Speaker,df)
-            fig,ax = plt.subplots()
-            ax.bar(busy_day.index,busy_day.values,color='purple')
-            plt.xticks(rotation='vertical')
-            st.pyplot(fig)
+        st.subheader("Most busy day")
+        fig, ax = plt.subplots(figsize=(9, 4))   # wide (16), same height (4)
+        busy_day = helper.week_activity_map(selected_Speaker, df)
+        ax.bar(busy_day.index, busy_day.values, color='purple')
+        ax.set_xlabel("Day", fontsize=11)
+        ax.set_ylabel("Number of Messages", fontsize=11)
+        ax.set_title("Messages by Weekday", fontsize=11)
+        # force integer y‐axis
+        ax.set_ylim(0, busy_day.values.max() + 1)
+        ax.yaxis.set_major_locator(MultipleLocator(1))
+        ax.set_yticklabels([f"{int(y)}" for y in ax.get_yticks()])
+        ax.set_xticklabels(busy_day.index, rotation='vertical')
+        ax.grid(axis='y', linestyle='--', alpha=0.5)
+        st.pyplot(fig, clear_figure=True)
 
-        with col2:
-            st.header("Most busy month")
-            busy_month = helper.month_activity_map(selected_Speaker, df)
-            fig, ax = plt.subplots()
-            ax.bar(busy_month.index, busy_month.values,color='orange')
-            plt.xticks(rotation='vertical')
-            st.pyplot(fig)
+        st.subheader("Most busy month")
+        fig, ax = plt.subplots(figsize=(9, 4))   # wide (16), same height (4)
+        busy_month = helper.month_activity_map(selected_Speaker, df)
+        ax.bar(busy_month.index, busy_month.values, color='orange')
+        ax.set_xlabel("Month", fontsize=11)
+        ax.set_ylabel("Number of Messages", fontsize=11)
+        ax.set_title("Messages by Month", fontsize=11)
+        # Force integer y‐axis
+        ax.set_ylim(0, busy_month.values.max() + 1)
+        ax.yaxis.set_major_locator(MultipleLocator(1))
+        ax.set_yticklabels([f"{int(y)}" for y in ax.get_yticks()])
+        ax.set_xticklabels(busy_month.index, rotation='vertical')
+        ax.grid(axis='y', linestyle='--', alpha=0.5)
+        st.pyplot(fig, clear_figure=True)
 
-        st.title("Weekly Activity Map")
-        Speaker_heatmap = helper.activity_heatmap(selected_Speaker,df)
-        fig,ax = plt.subplots()
-        ax = sns.heatmap(Speaker_heatmap)
-        st.pyplot(fig)
+
+        st.title("📰 Heatmap (Day vs Hour)")
+        hm = helper.activity_heatmap(selected_Speaker, df)
+        fig, ax = plt.subplots(figsize=(8,4))
+        helper.plot_heatmap(hm, ax)
+        st.pyplot(fig, clear_figure=True)
+
 
         # finding the busiest Speakers in the group(Group level)
-        if selected_Speaker == 'Overall':
+        if selected_Speaker == 'Everyone':
             st.title('Most Busy Speakers')
             x,new_df = helper.most_busy_Speakers(df)
             fig, ax = plt.subplots()
@@ -149,3 +172,4 @@ if uploaded_file is not None:
         emoji_df = helper.emoji_helper(selected_Speaker,df)
         st.title("Emoji Analysis")
         st.dataframe(emoji_df, hide_index=True)
+
