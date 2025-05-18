@@ -1,16 +1,6 @@
 #NLP-Driven Multilingual Social Chat Analyzer for Emotion Detection, Behavior Analysis & Relationship Insights
 
 import streamlit as st
-# Debug: show whether the secret is present
-secret_blob = st.secrets.get("gcp", {}).get("service_account")
-st.write("🔍 Secret loaded:", bool(secret_blob), "— length:", len(secret_blob or ""))
-
-# Show the full JSON blob
-st.code(secret_blob or "", language="json")
-
-st.stop()  # halt execution so you can inspect
-
-
 import preprocessor
 import helper
 import matplotlib.pyplot as plt
