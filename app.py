@@ -8,6 +8,9 @@ import matplotlib.font_manager as fm
 import seaborn as sns
 import matplotlib as mpl
 
+with open("static/style.css") as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
 # -- UI setup for font --
 font_path = 'NotoSans-Regular.ttf'  # Replace with your font file name
 font_prop = fm.FontProperties(fname=font_path)
