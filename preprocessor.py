@@ -7,20 +7,20 @@ import streamlit as st
 from google.cloud import translate_v2 as translate
 import html
 
-# --- Securely load GCP credentials from Streamlit secrets ---
-try:
-    sa_json_str = st.secrets["gcp"]["service_account"].strip()
-    sa_info = json.loads(sa_json_str)
-    # write to temp file
-    with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as fp:
-        json.dump(sa_info, fp)
-        creds_path = fp.name
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
-    translate_client = translate.Client()
-    st.info("✅ Google Translate credentials loaded")
-except Exception as e:
-    translate_client = None
-    st.warning("⚠️ Could not load Google Translate credentials; translations will be disabled.")
+# 1) Read the JSON blob from secrets
+sa_json = st.secrets["gcp"]["service_account"]
+
+# 2) Parse it and write to a temp file
+sa_info = json.loads(sa_json)
+with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as fp:
+    json.dump(sa_info, fp)
+    creds_path = fp.name
+
+# 3) Point Google’s SDK at that file
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+
+# 4) Initialize the client
+translate_client = translate.Client()
 
 def parse_whatsapp_chat(file_content):
     lines = file_content.splitlines()
