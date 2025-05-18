@@ -9,8 +9,17 @@ import streamlit as st
 from google.cloud import translate_v2 as translate
 import html
 
-# Set up Google Cloud Translate credentials
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "steady-shard-458110-g8-3fb5c1444f42.json"
+# 1) Read the JSON blob from secrets
+sa_json = st.secrets["gcp"]["service_account"]
+
+# 2) Parse it and write to a temp file
+sa_info = json.loads(sa_json)
+with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as fp:
+    json.dump(sa_info, fp)
+    creds_path = fp.name
+
+# 3) Point Google’s SDK at that file
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
 
 # 4) Initialize the client
 translate_client = translate.Client()
