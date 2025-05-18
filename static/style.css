@@ -1,90 +1,58 @@
-/* ------------------------------------------------------------
-   1. Main app background & global font
-   ------------------------------------------------------------ */
-/* Targets everything except the sidebar */
-[data-testid="stAppViewContainer"] .main, 
-[data-testid="stAppViewContainer"] .block-container {
+/* 1. Dark-mode the entire app container except the sidebar */
+[data-testid="stAppViewContainer"] > div:nth-child(1) > div:nth-child(1) {
   background-color: #121212 !important;
   color: #E0E0E0 !important;
-  font-family: 'Roboto', 'Segoe UI', Tahoma, sans-serif !important;
 }
 
-/* ------------------------------------------------------------
-   2. Headings
-   ------------------------------------------------------------ */
-h1, .css-18e3th9 {
-  color: #BB86FC !important;
-  font-family: 'Montserrat', sans-serif !important;
-  border-bottom: 2px solid #333 !important;
-  padding-bottom: 0.5rem !important;
-}
-h2, .css-1v3fvcr h2 {
-  color: #03DAC6 !important;
-  font-family: 'Montserrat', sans-serif !important;
+/* 2. Darken every “block” (charts, tables, metrics, etc.) */
+[data-testid="stAppViewContainer"] .block-container,
+[data-testid="stAppViewContainer"] .main {
+  background-color: #121212 !important;
+  color: #E0E0E0 !important;
 }
 
-/* ------------------------------------------------------------
-   3. Buttons in main area
-   ------------------------------------------------------------ */
-.stButton>button {
-  background-color: #3700B3 !important;
-  color: #FFFFFF !important;
-  border-radius: 6px !important;
-  padding: 0.5rem 1rem !important;
-  font-family: 'Roboto', sans-serif !important;
-  transition: background-color 0.2s ease !important;
-}
-.stButton>button:hover {
-  background-color: #6200EE !important;
-}
-
-/* ------------------------------------------------------------
-   4. Metrics & cards
-   ------------------------------------------------------------ */
-div[data-testid="metric-container"], .stMetric {
+/* 3. File uploader widget */
+.stFileUploader > div, 
+.stFileUploader > div > div.css-1u8zf0y eds-btn {
   background-color: #1E1E1E !important;
-  border-radius: 8px !important;
-  padding: 1rem !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.5) !important;
+  color: #E0E0E0 !important;
 }
 
-/* ------------------------------------------------------------
-   5. DataFrames in main
-   ------------------------------------------------------------ */
+/* 4. Selectbox and Buttons (in main area) */
+[data-testid="stAppViewContainer"] .stSelectbox>label,
+[data-testid="stAppViewContainer"] .stSelectbox>div,
+[data-testid="stAppViewContainer"] .stButton>button {
+  background-color: #1E1E1E !important;
+  color: #E0E0E0 !important;
+  border: 1px solid #333 !important;
+}
+
+/* 5. DataFrame & tables */
 .stDataFrame table {
   background-color: #1E1E1E !important;
   color: #E0E0E0 !important;
-  font-family: 'Roboto', sans-serif !important;
 }
 .stDataFrame thead th {
-  background-color: #333 !important;
-  color: #FFFFFF !important;
-  font-weight: 600 !important;
-}
-.stDataFrame tbody tr:nth-child(odd) {
-  background-color: #1A1A1A !important;
-}
-.stDataFrame tbody tr:hover {
   background-color: #2A2A2A !important;
+  color: #FFFFFF !important;
 }
+.stDataFrame tbody tr:nth-child(odd) { background: #181818 !important; }
+.stDataFrame tbody tr:nth-child(even) { background: #1E1E1E !important; }
 
-/* ------------------------------------------------------------
-   6. Plots area
-   ------------------------------------------------------------ */
-.element-container .stPyplot, 
+/* 6. Plot areas */
+.element-container .stPyplot,
 .element-container .stPlotlyChart {
   background-color: #121212 !important;
-  border-radius: 8px !important;
-  padding: 0.5rem !important;
 }
 
-/* ------------------------------------------------------------
-   7. Links
-   ------------------------------------------------------------ */
-a {
-  color: #03DAC6 !important;
-  font-family: 'Roboto', sans-serif !important;
+/* 7. Metric cards */
+div[data-testid="metric-container"] {
+  background-color: #1E1E1E !important;
 }
-a:hover {
-  color: #66FFF9 !important;
+
+/* 8. Remove panel shadows so white edges don’t show */
+[data-testid="stAppViewContainer"] .css-1bn4ua1,
+[data-testid="stAppViewContainer"] .css-1offfwp {
+  box-shadow: none !important;
+  background: #121212 !important;
 }
