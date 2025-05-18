@@ -15,7 +15,7 @@ with open("static/style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # Register custom font
-FONT_PATH = "static/NotoSans-Regular.ttf"
+FONT_PATH = "NotoSans-Regular.ttf"
 fm.fontManager.addfont(FONT_PATH)
 fp = fm.FontProperties(fname=FONT_PATH)
 plt.rcParams['font.family'] = fp.get_name()
