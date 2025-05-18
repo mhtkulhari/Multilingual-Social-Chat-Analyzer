@@ -1,8 +1,52 @@
-/* make all headings larger */
-h1, .css-18e3th9 { font-size: 2.5rem !important; }
+/* 1. Global font & page background */
+body, .reportview-container {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  background: linear-gradient(120deg, #f0f4f8, #d9e2ec) !important;
+}
 
-/* turn off the default Streamlit sidebar background */
-.stSidebar { background-color: #ffffff !important; }
+/* 2. Sidebar tweaks: wider + subtle shadow */
+.css-1d391kg {
+  width: 300px !important;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.1) !important;
+}
 
-/* tweak the table header font */
-.stDataFrame thead th { font-size: 1rem; font-weight: bold; }
+/* 3. Card / st.metric styling */
+div[data-testid="metric-container"] {
+  background-color: #ffffff !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05) !important;
+}
+
+/* 4. Header color & underline */
+h1, .css-18e3th9 {
+  color: #334e68 !important;
+  border-bottom: 3px solid #627d98 !important;
+  padding-bottom: 8px !important;
+}
+
+/* 5. Button style & hover effect */
+.stButton>button {
+  background-color: #486581 !important;
+  color: #ffffff !important;
+  border-radius: 6px !important;
+  padding: 0.5rem 1.2rem !important;
+  transition: background-color 0.2s ease !important;
+}
+.stButton>button:hover {
+  background-color: #334e68 !important;
+}
+
+/* 6. DataFrame zebra row striping */
+.stDataFrame table tbody tr:nth-child(odd) {
+  background-color: #f7fafc !important;
+}
+.stDataFrame table tbody tr:hover {
+  background-color: #e1e8f0 !important;
+}
+
+/* 7. Smaller margins around plots */
+.element-container .stPlotlyChart, 
+.element-container .stPyplot {
+  margin: 0.5rem 0 !important;
+}
