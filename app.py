@@ -22,7 +22,7 @@ mpl.rcParams['font.family'] = font_prop.get_name()
 mpl.rcParams['axes.unicode_minus'] = False  # To handle minus signs correctly
 
 
-st.sidebar.title("SOCIAL CHAT ANALYZER")
+st.sidebar.markdown("### **SOCIAL CHAT ANALYZER**")
 
 uploaded_file = st.sidebar.file_uploader("Export Whatsapp Chat")
 if uploaded_file is not None:
