@@ -1,58 +1,52 @@
-/* 1. Dark-mode the entire app container except the sidebar */
-[data-testid="stAppViewContainer"] > div:nth-child(1) > div:nth-child(1) {
-  background-color: #121212 !important;
-  color: #E0E0E0 !important;
+/* 1. Global font & page background */
+body, .reportview-container {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  background: linear-gradient(120deg, #f0f4f8, #d9e2ec) !important;
 }
 
-/* 2. Darken every “block” (charts, tables, metrics, etc.) */
-[data-testid="stAppViewContainer"] .block-container,
-[data-testid="stAppViewContainer"] .main {
-  background-color: #121212 !important;
-  color: #E0E0E0 !important;
+/* 2. Sidebar tweaks: wider + subtle shadow */
+.css-1d391kg {
+  width: 300px !important;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.1) !important;
 }
 
-/* 3. File uploader widget */
-.stFileUploader > div, 
-.stFileUploader > div > div.css-1u8zf0y eds-btn {
-  background-color: #1E1E1E !important;
-  color: #E0E0E0 !important;
-}
-
-/* 4. Selectbox and Buttons (in main area) */
-[data-testid="stAppViewContainer"] .stSelectbox>label,
-[data-testid="stAppViewContainer"] .stSelectbox>div,
-[data-testid="stAppViewContainer"] .stButton>button {
-  background-color: #1E1E1E !important;
-  color: #E0E0E0 !important;
-  border: 1px solid #333 !important;
-}
-
-/* 5. DataFrame & tables */
-.stDataFrame table {
-  background-color: #1E1E1E !important;
-  color: #E0E0E0 !important;
-}
-.stDataFrame thead th {
-  background-color: #2A2A2A !important;
-  color: #FFFFFF !important;
-}
-.stDataFrame tbody tr:nth-child(odd) { background: #181818 !important; }
-.stDataFrame tbody tr:nth-child(even) { background: #1E1E1E !important; }
-
-/* 6. Plot areas */
-.element-container .stPyplot,
-.element-container .stPlotlyChart {
-  background-color: #121212 !important;
-}
-
-/* 7. Metric cards */
+/* 3. Card / st.metric styling */
 div[data-testid="metric-container"] {
-  background-color: #1E1E1E !important;
+  background-color: #ffffff !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05) !important;
 }
 
-/* 8. Remove panel shadows so white edges don’t show */
-[data-testid="stAppViewContainer"] .css-1bn4ua1,
-[data-testid="stAppViewContainer"] .css-1offfwp {
-  box-shadow: none !important;
-  background: #121212 !important;
+/* 4. Header color & underline */
+h1, .css-18e3th9 {
+  color: #334e68 !important;
+  border-bottom: 3px solid #627d98 !important;
+  padding-bottom: 8px !important;
+}
+
+/* 5. Button style & hover effect */
+.stButton>button {
+  background-color: #486581 !important;
+  color: #ffffff !important;
+  border-radius: 6px !important;
+  padding: 0.5rem 1.2rem !important;
+  transition: background-color 0.2s ease !important;
+}
+.stButton>button:hover {
+  background-color: #334e68 !important;
+}
+
+/* 6. DataFrame zebra row striping */
+.stDataFrame table tbody tr:nth-child(odd) {
+  background-color: #f7fafc !important;
+}
+.stDataFrame table tbody tr:hover {
+  background-color: #e1e8f0 !important;
+}
+
+/* 7. Smaller margins around plots */
+.element-container .stPlotlyChart, 
+.element-container .stPyplot {
+  margin: 0.5rem 0 !important;
 }
