@@ -5,16 +5,15 @@ from google.cloud import translate_v2 as translate
 from tqdm import tqdm
 import html
 
-# Load the JSON string from st.secrets:
-sa_json_str = st.secrets["gcp"]["service_account"]
-
-# Write it to a temporary file at runtime:
-with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as fp:
-    fp.write(sa_json_str)
-    creds_path = fp.name
-
-# Set up Google Cloud Translate credentials
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+# --- Load Google Cloud credentials from Streamlit secrets ---
+# Expecting the JSON string under st.secrets['gcp']['service_account']
+sa_json_str = st.secrets.get("gcp", {}).get("service_account")
+if sa_json_str:
+    # Write JSON to a temporary file
+    with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as fp:
+        fp.write(sa_json_str)
+        creds_path = fp.name
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
 
 # Initialize the translate client
 translate_client = translate.Client()
