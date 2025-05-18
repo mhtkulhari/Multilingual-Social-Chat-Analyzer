@@ -38,9 +38,9 @@ if uploaded_file is not None:
     # Fetch unique Speakers
     Speaker_list = df['Speaker'].unique().tolist()
     Speaker_list.sort()
-    Speaker_list.insert(0, "Overall")
+    Speaker_list.insert(0, "Everyone")
 
-    selected_Speaker = st.sidebar.selectbox("Show analysis wrt", Speaker_list)
+    selected_Speaker = st.sidebar.selectbox("Show analysis for", Speaker_list)
 
     if st.sidebar.button("Show Analysis"):
 
