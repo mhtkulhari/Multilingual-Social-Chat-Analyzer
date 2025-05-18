@@ -1,0 +1,9 @@
+pandas
+google-cloud-translate
+tqdm
+streamlit
+matplotlib
+seaborn
+urlextract
+emoji
+wordcloud
