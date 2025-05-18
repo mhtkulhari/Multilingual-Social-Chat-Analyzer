@@ -1,77 +1,36 @@
-/* === Global background & text === */
-body, .reportview-container, .main, .block-container {
-  background-color: #121212 !important;
-  color: #E0E0E0 !important;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+/* 0. Ensure custom CSS loads last */
+:root {
+  --primary-background: #000000;
+  --sidebar-background: #1F1F1F; /* your sidebar color */
 }
 
-/* === Sidebar === */
-.css-1d391kg {
-  background-color: #1F1F1F !important;
-  color: #E0E0E0 !important;
-  border-right: 1px solid #333 !important;
+/* 1. Main content area (all pages) */
+.reportview-container .main,
+.reportview-container .main .block-container,
+.block-container {
+  background-color: var(--primary-background) !important;
 }
 
-/* Sidebar headers */
-.css-1v3fvcr h1, .css-1v3fvcr h2 {
-  color: #BB86FC !important;
-}
-
-/* === Buttons === */
-.stButton>button {
-  background-color: #3700B3 !important;
-  color: #FFFFFF !important;
-  border-radius: 6px !important;
-  padding: 0.5rem 1rem !important;
-  transition: background-color 0.2s ease !important;
-}
-.stButton>button:hover {
-  background-color: #6200EE !important;
-}
-
-/* === Metrics & cards === */
-div[data-testid="metric-container"], .stMetric {
-  background-color: #1E1E1E !important;
-  border-radius: 8px !important;
-  padding: 1rem !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.5) !important;
-}
-
-/* === Headings === */
-h1, .css-18e3th9 {
-  color: #BB86FC !important;
-  border-bottom: 2px solid #333 !important;
-  padding-bottom: 0.5rem !important;
-}
-h2, .css-1v3fvcr h2 {
-  color: #03DAC6 !important;
-}
-
-/* === DataFrame styling === */
+/* 2. Expanders, widgets, charts etc. inside main area */
+.element-container,
+.element-container .stPyplot,
+.element-container .stPlotlyChart,
+div[data-testid="metric-container"],
 .stDataFrame table {
-  background-color: #1E1E1E !important;
-  color: #E0E0E0 !important;
-}
-.stDataFrame thead th {
-  background-color: #333 !important;
-  color: #FFFFFF !important;
-  font-weight: 600 !important;
-}
-.stDataFrame tbody tr:nth-child(odd) {
-  background-color: #1A1A1A !important;
-}
-.stDataFrame tbody tr:hover {
-  background-color: #2A2A2A !important;
+  background-color: var(--primary-background) !important;
 }
 
-/* === Plots === */
-.element-container .stPyplot, .element-container .stPlotlyChart {
-  background-color: #121212 !important;
-  border-radius: 8px !important;
-  padding: 0.5rem !important;
+/* 3. Keep sidebar its own color */
+.css-1d391kg { /* replace with your sidebar class if yours differs */
+  background-color: var(--sidebar-background) !important;
 }
 
-/* === Links === */
+/* 4. Text & headings in main area */
+body, .reportview-container, .main, .block-container {
+  color: #E0E0E0 !important; /* light text on black */
+}
+
+/* 5. Links in main area */
 a {
   color: #03DAC6 !important;
 }
