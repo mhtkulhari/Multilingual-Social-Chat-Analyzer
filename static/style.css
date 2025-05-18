@@ -51,29 +51,26 @@ h1, .css-18e3th9 {
   margin: 0.5rem 0 !important;
 }
 
-/* Change the "Drag and drop file here" text */
-section[data-testid="stFileUploader"] label {
-    font-size: 16px;
-    color: #444;
-}
-section[data-testid="stFileUploader"] label::before {
-    content: "WhatsApp Chat";
-    display: block;
-    font-weight: bold;
-}
-
-/* Hide default text */
+/* Override "Drag and drop file here" */
 section[data-testid="stFileUploader"] label span {
-    display: none;
+    visibility: hidden;
+    position: relative;
+}
+section[data-testid="stFileUploader"] label span::before {
+    content: "Drop your file here or click below";
+    visibility: visible;
+    position: absolute;
+    left: 0;
 }
 
-/* Change "Browse files" button text */
-section[data-testid="stFileUploader"] button {
-    font-size: 16px;
-}
-section[data-testid="stFileUploader"] button::before {
-    content: "Upload";
-}
+/* Override "Browse files" */
 section[data-testid="stFileUploader"] button span {
-    display: none;
+    visibility: hidden;
+    position: relative;
+}
+section[data-testid="stFileUploader"] button span::before {
+    content: "Select Chat File";
+    visibility: visible;
+    position: absolute;
+    left: 0;
 }
