@@ -1,164 +1,144 @@
+#app.py
+
+
+
 import streamlit as st
+import preprocessor
+import helper
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 import seaborn as sns
-from preprocessor import parse_whatsapp_chat
-from helper import (
-    fetch_stats, monthly_timeline, daily_timeline,
-    week_activity_map, month_activity_map, activity_heatmap,
-    most_busy_Speakers, create_wordcloud,
-    most_common_words, emoji_helper
-)
+import matplotlib as mpl
 
-# Inject custom CSS
 with open("static/style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# Register custom font
-FONT_PATH = "NotoSans-Regular.ttf"
-fm.fontManager.addfont(FONT_PATH)
-fp = fm.FontProperties(fname=FONT_PATH)
-plt.rcParams['font.family'] = fp.get_name()
-plt.rcParams['axes.unicode_minus'] = False
+# -- UI setup for font --
+font_path = 'NotoSans-Regular.ttf'  # Replace with your font file name
+fm.fontManager.addfont(font_path)
+font_prop = fm.FontProperties(fname=font_path)
 
-st.set_page_config(page_title="Social Chat Analyzer", layout="wide")
+mpl.rcParams['font.family'] = font_prop.get_name()
+mpl.rcParams['axes.unicode_minus'] = False  # To handle minus signs correctly
+
+
 st.sidebar.title("SOCIAL CHAT ANALYZER")
 
-uploaded = st.sidebar.file_uploader("Upload chat (.txt)", type=["txt"])
-if uploaded:
-    content = uploaded.getvalue().decode("utf-8")
-    df = parse_whatsapp_chat(content)
+uploaded_file = st.sidebar.file_uploader("Choose a file")
+if uploaded_file is not None:
+    # Get file content as text
+    file_content = uploaded_file.getvalue().decode("utf-8")
+    
+    # Pass the text content to the parsing function
+    df = preprocessor.parse_whatsapp_chat(file_content)
 
-    speakers = sorted(df.Speaker.unique())
-    speakers.insert(0, "Overall")
-    choice = st.sidebar.selectbox("Show analysis for", speakers)
+    # Display the dataframe in Streamlit
+    st.dataframe(df)
+
+    # Fetch unique Speakers
+    Speaker_list = df['Speaker'].unique().tolist()
+    Speaker_list.sort()
+    Speaker_list.insert(0, "Overall")
+
+    selected_Speaker = st.sidebar.selectbox("Show analysis wrt", Speaker_list)
 
     if st.sidebar.button("Show Analysis"):
-        # --- Top metrics ---
-        msgs, words, media, links = fetch_stats(choice, df)
-        st.header("📊 Top Statistics")
-        c1, c2, c3, c4 = st.columns(4)
-        for col, label, val in zip(
-            (c1, c2, c3, c4),
-            ("Messages", "Words", "Media Shared", "Links Shared"),
-            (msgs, words, media, links)
-        ):
-            col.metric(label, val)
 
-        # --- Monthly timeline ---
-        st.header("📈 Monthly Timeline")
-        mt = monthly_timeline(choice, df)
-        fig, ax = plt.subplots()
-        ax.plot(mt['time'], mt['Message'], marker='o', label='Messages per Month')
-        ax.set_xlabel("Month-Year")
-        ax.set_ylabel("Number of Messages")
-        ax.set_xticks(range(len(mt['time'])))
-        ax.set_xticklabels(mt['time'], rotation=45, ha='right')
-        ax.grid(axis='y', linestyle='--', alpha=0.5)
-        ax.legend()
+        # Stats Area
+        num_messages, words, num_media_messages, num_links = helper.fetch_stats(selected_Speaker,df)
+        st.title("Top Statistics")
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.header("Total Messages")
+            st.title(num_messages)
+        with col2:
+            st.header("Total Words")
+            st.title(words)
+        with col3:
+            st.header("Media Shared")
+            st.title(num_media_messages)
+        with col4:
+            st.header("Links Shared")
+            st.title(num_links)
+
+        # monthly timeline
+        st.title("Monthly Timeline")
+        timeline = helper.monthly_timeline(selected_Speaker,df)
+        fig,ax = plt.subplots()
+        ax.plot(timeline['time'], timeline['Message'],color='green')
+        plt.xticks(rotation='vertical')
         st.pyplot(fig)
 
-        # --- Daily timeline ---
-        st.header("📅 Daily Timeline")
-        dt = daily_timeline(choice, df)
+        # Daily timeline
+        st.title("Daily Timeline")
+        daily_timeline = helper.daily_timeline(selected_Speaker, df)
         fig, ax = plt.subplots()
-        ax.plot(dt['Date'], dt['Message'], marker='o', label='Messages per Day')
-        ax.set_xlabel("Date")
-        ax.set_ylabel("Number of Messages")
-        ax.set_xticks(dt['Date'])
-        ax.set_xticklabels(dt['Date'].dt.strftime('%d-%b-%Y'), rotation=45, ha='right')
-        ax.grid(axis='y', linestyle='--', alpha=0.5)
-        ax.legend()
+        ax.plot(daily_timeline['Date'], daily_timeline['Message'], color='black')
+        plt.xticks(rotation='vertical')
         st.pyplot(fig)
 
-        # --- Activity maps ---
-        st.header("🗓️ Activity Map")
-        d1, d2 = st.columns(2)
 
-        with d1:
-            st.subheader("Most Busy Day")
-            bd = week_activity_map(choice, df)
-            fig, ax = plt.subplots()
-            ax.bar(bd.index, bd.values, label='Message Count')
-            for p in ax.patches:
-                ax.annotate(int(p.get_height()), (p.get_x() + p.get_width()/2, p.get_height()),
-                            ha='center', va='bottom')
-            ax.set_xlabel("Day of Week")
-            ax.set_ylabel("Messages")
-            ax.set_xticks(range(len(bd.index)))
-            ax.set_xticklabels(bd.index, rotation=45)
-            ax.grid(axis='y', linestyle='--', alpha=0.5)
-            ax.legend()
+        # activity map
+        st.title('Activity Map')
+        col1,col2 = st.columns(2)
+
+        with col1:
+            st.header("Most busy day")
+            busy_day = helper.week_activity_map(selected_Speaker,df)
+            fig,ax = plt.subplots()
+            ax.bar(busy_day.index,busy_day.values,color='purple')
+            plt.xticks(rotation='vertical')
             st.pyplot(fig)
 
-        with d2:
-            st.subheader("Most Busy Month")
-            bm = month_activity_map(choice, df)
+        with col2:
+            st.header("Most busy month")
+            busy_month = helper.month_activity_map(selected_Speaker, df)
             fig, ax = plt.subplots()
-            ax.bar(bm.index, bm.values, label='Message Count')
-            for p in ax.patches:
-                ax.annotate(int(p.get_height()), (p.get_x() + p.get_width()/2, p.get_height()),
-                            ha='center', va='bottom')
-            ax.set_xlabel("Month")
-            ax.set_ylabel("Messages")
-            ax.set_xticks(range(len(bm.index)))
-            ax.set_xticklabels(bm.index, rotation=45)
-            ax.grid(axis='y', linestyle='--', alpha=0.5)
-            ax.legend()
+            ax.bar(busy_month.index, busy_month.values,color='orange')
+            plt.xticks(rotation='vertical')
             st.pyplot(fig)
 
-        # --- Weekly heatmap ---
-        st.header("🕗 Weekly Heatmap")
-        hm = activity_heatmap(choice, df)
-        fig, ax = plt.subplots(figsize=(10, 4))
-        sns.heatmap(hm, annot=True, fmt="d", ax=ax, cbar=True, cbar_kws={'label': 'Messages'})
-        ax.set_xlabel("Hour Period")
-        ax.set_ylabel("Day of Week")
+        st.title("Weekly Activity Map")
+        Speaker_heatmap = helper.activity_heatmap(selected_Speaker,df)
+        fig,ax = plt.subplots()
+        ax = sns.heatmap(Speaker_heatmap)
         st.pyplot(fig)
 
-        # --- Overall busiest speakers ---
-        if choice == "Overall":
-            st.header("🏆 Top Speakers")
-            counts, pct = most_busy_Speakers(df)
+        # finding the busiest Speakers in the group(Group level)
+        if selected_Speaker == 'Overall':
+            st.title('Most Busy Speakers')
+            x,new_df = helper.most_busy_Speakers(df)
             fig, ax = plt.subplots()
-            ax.bar(counts.index, counts.values, label='Message Count')
-            for p in ax.patches:
-                ax.annotate(int(p.get_height()), (p.get_x() + p.get_width()/2, p.get_height()),
-                            ha='center', va='bottom')
-            ax.set_xlabel("Speaker")
-            ax.set_ylabel("Messages Sent")
-            ax.set_xticks(range(len(counts.index)))
-            ax.set_xticklabels(counts.index, rotation=45)
-            ax.grid(axis='y', linestyle='--', alpha=0.5)
-            ax.legend()
-            st.pyplot(fig)
-            st.dataframe(pct)
 
-        # --- Wordcloud ---
-        st.header("☁️ Wordcloud")
-        wc = create_wordcloud(choice, df)
+            col1, col2 = st.columns(2)
+
+            with col1:
+                ax.bar(x.index, x.values,color='red')
+                plt.xticks(rotation='vertical')
+                st.pyplot(fig)
+            with col2:
+                st.dataframe(new_df)
+
+
+        # WordCloud
+        st.title("Wordcloud")
+        df_wc = helper.create_wordcloud(selected_Speaker,df)
         fig, ax = plt.subplots()
-        ax.imshow(wc, interpolation='bilinear')
-        ax.axis("off")
+        ax.imshow(df_wc, interpolation='bilinear')
+        ax.axis('off')  # Important: Hide axis
         st.pyplot(fig)
 
-        # --- Most common words ---
-        st.header("🔤 Most Common Words")
-        common = most_common_words(choice, df)
+        most_common_df = helper.most_common_words(selected_Speaker, df)
         fig, ax = plt.subplots()
-        ax.barh(common[0], common[1], label='Frequency')
-        for p in ax.patches:
-            ax.annotate(int(p.get_width()), (p.get_width(), p.get_y() + p.get_height()/2),
-                        ha='left', va='center')
-        ax.set_xlabel("Frequency")
-        ax.set_ylabel("Words")
-        ax.set_yticks(range(len(common[0])))
-        ax.set_yticklabels(common[0])
-        ax.grid(axis='x', linestyle='--', alpha=0.5)
-        ax.legend()
+        ax.barh(most_common_df[0], most_common_df[1])
+        plt.xticks(rotation=0)
+        st.title('Most Common Words')
         st.pyplot(fig)
 
-        # --- Emoji analysis ---
-        st.header("😀 Emoji Analysis")
-        emojis = emoji_helper(choice, df)
-        st.dataframe(emojis, hide_index=True)
+
+
+        # emoji analysis
+        emoji_df = helper.emoji_helper(selected_Speaker,df)
+        st.title("Emoji Analysis")
+        st.dataframe(emoji_df, hide_index=True)
