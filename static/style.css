@@ -1,52 +1,80 @@
-/* 1. Global font & page background */
-body, .reportview-container {
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
-  background: linear-gradient(120deg, #f0f4f8, #d9e2ec) !important;
+/* === Global background & text === */
+body, .reportview-container, .main, .block-container {
+  background-color: #121212 !important;
+  color: #E0E0E0 !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
 }
 
-/* 2. Sidebar tweaks: wider + subtle shadow */
+/* === Sidebar === */
 .css-1d391kg {
-  width: 300px !important;
-  box-shadow: 2px 0 8px rgba(0,0,0,0.1) !important;
+  background-color: #1F1F1F !important;
+  color: #E0E0E0 !important;
+  border-right: 1px solid #333 !important;
 }
 
-/* 3. Card / st.metric styling */
-div[data-testid="metric-container"] {
-  background-color: #ffffff !important;
-  border-radius: 12px !important;
-  padding: 16px !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05) !important;
+/* Sidebar headers */
+.css-1v3fvcr h1, .css-1v3fvcr h2 {
+  color: #BB86FC !important;
 }
 
-/* 4. Header color & underline */
-h1, .css-18e3th9 {
-  color: #334e68 !important;
-  border-bottom: 3px solid #627d98 !important;
-  padding-bottom: 8px !important;
-}
-
-/* 5. Button style & hover effect */
+/* === Buttons === */
 .stButton>button {
-  background-color: #486581 !important;
-  color: #ffffff !important;
+  background-color: #3700B3 !important;
+  color: #FFFFFF !important;
   border-radius: 6px !important;
-  padding: 0.5rem 1.2rem !important;
+  padding: 0.5rem 1rem !important;
   transition: background-color 0.2s ease !important;
 }
 .stButton>button:hover {
-  background-color: #334e68 !important;
+  background-color: #6200EE !important;
 }
 
-/* 6. DataFrame zebra row striping */
-.stDataFrame table tbody tr:nth-child(odd) {
-  background-color: #f7fafc !important;
-}
-.stDataFrame table tbody tr:hover {
-  background-color: #e1e8f0 !important;
+/* === Metrics & cards === */
+div[data-testid="metric-container"], .stMetric {
+  background-color: #1E1E1E !important;
+  border-radius: 8px !important;
+  padding: 1rem !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5) !important;
 }
 
-/* 7. Smaller margins around plots */
-.element-container .stPlotlyChart, 
-.element-container .stPyplot {
-  margin: 0.5rem 0 !important;
+/* === Headings === */
+h1, .css-18e3th9 {
+  color: #BB86FC !important;
+  border-bottom: 2px solid #333 !important;
+  padding-bottom: 0.5rem !important;
+}
+h2, .css-1v3fvcr h2 {
+  color: #03DAC6 !important;
+}
+
+/* === DataFrame styling === */
+.stDataFrame table {
+  background-color: #1E1E1E !important;
+  color: #E0E0E0 !important;
+}
+.stDataFrame thead th {
+  background-color: #333 !important;
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+}
+.stDataFrame tbody tr:nth-child(odd) {
+  background-color: #1A1A1A !important;
+}
+.stDataFrame tbody tr:hover {
+  background-color: #2A2A2A !important;
+}
+
+/* === Plots === */
+.element-container .stPyplot, .element-container .stPlotlyChart {
+  background-color: #121212 !important;
+  border-radius: 8px !important;
+  padding: 0.5rem !important;
+}
+
+/* === Links === */
+a {
+  color: #03DAC6 !important;
+}
+a:hover {
+  color: #66FFF9 !important;
 }
