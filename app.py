@@ -13,10 +13,12 @@ with open("static/style.css") as f:
 
 # -- UI setup for font --
 font_path = 'NotoSans-Regular.ttf'  # Replace with your font file name
+fm.fontManager.addfont(font_path)
 font_prop = fm.FontProperties(fname=font_path)
+
 mpl.rcParams['font.family'] = font_prop.get_name()
 mpl.rcParams['axes.unicode_minus'] = False  # To handle minus signs correctly
-    
+
 
 st.sidebar.title("SOCIAL CHAT ANALYZER")
 
