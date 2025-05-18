@@ -1,19 +1,37 @@
+import streamlit as st
+import os
+import tempfile
 import re
 import pandas as pd
-import os, json, tempfile
-from google.cloud import translate_v2 as translate
-from tqdm import tqdm
 import html
+from google.cloud import translate_v2 as translate
 
-# --- Load Google Cloud credentials from Streamlit secrets ---
-# Expecting the JSON string under st.secrets['gcp']['service_account']
-sa_json_str = st.secrets.get("gcp", {}).get("service_account")
+# --- Set up Google Cloud credentials ---
+# Priority: 1) Streamlit secrets (for deployed app)
+#           2) Local JSON file (for local development)
+creds_path = None
+
+# 1) Try to load from Streamlit secrets
+sa_json_str = None
+if hasattr(st, 'secrets'):
+    sa_json_str = st.secrets.get("gcp", {}).get("service_account")
+
 if sa_json_str:
-    # Write JSON to a temporary file
+    # Write the secret JSON to a temp file
     with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as fp:
         fp.write(sa_json_str)
         creds_path = fp.name
+else:
+    # Fallback to local credentials file (ignored by git)
+    local_file = "steady-shard-458110-g8-3fb5c1444f42.json"
+    if os.path.exists(local_file):
+        creds_path = local_file
+
+# If we found any credentials, export the env var
+if creds_path:
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+else:
+    st.warning("Google credentials not found: translation may fail.")
 
 # Initialize the translate client
 translate_client = translate.Client()
