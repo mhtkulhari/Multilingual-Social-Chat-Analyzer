@@ -36,6 +36,10 @@ h1, .css-18e3th9 {
 .stButton>button:hover {
   background-color: #1fc4bf !important;
 }
+/* Make 'Show Analysis' button text bold */
+section[data-testid="stSidebar"] button {
+    font-weight: bold;
+}
 
 /* 6. DataFrame zebra row striping */
 .stDataFrame table tbody tr:nth-child(odd) {
