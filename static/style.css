@@ -2,6 +2,8 @@
 body, .reportview-container {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
   background: linear-gradient(120deg, #f0f4f8, #d9e2ec) !important;
+  margin: 0;
+  padding: 0;
 }
 
 /* 2. Sidebar tweaks: wider + subtle shadow */
@@ -45,8 +47,8 @@ h1, .css-18e3th9 {
   background-color: #e1e8f0 !important;
 }
 
-/* 7. Smaller margins around plots */
-.element-container .stPlotlyChart, 
+/* 7. Tighter margins around plots */
+.element-container .stPlotlyChart,
 .element-container .stPyplot {
   margin: 0.5rem 0 !important;
 }
