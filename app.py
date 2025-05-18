@@ -7,22 +7,6 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 import seaborn as sns
 import matplotlib as mpl
-# 1) Pull the client object
-translate_client = getattr(preprocessor, "translate_client", None)
-
-if translate_client is None:
-    st.error("❌ translate_client is None – translation won’t work.")
-else:
-    try:
-        # 2) Send a quick test
-        sample_text = "Hola mundo"
-        result = translate_client.translate(sample_text, target_language="en")
-        translated = result.get("translatedText", "<no result>")
-        st.success(f"✅ Translation test passed: “{sample_text}” → “{translated}”")
-    except Exception as e:
-        st.error(f"❌ Translation test failed: {e}")
-
-st.stop()  # Stop here so you can inspect the self-test
 
 # -- UI setup for font --
 font_path = 'NotoSans-Regular.ttf'  # Replace with your font file name
