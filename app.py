@@ -1,6 +1,14 @@
 #NLP-Driven Multilingual Social Chat Analyzer for Emotion Detection, Behavior Analysis & Relationship Insights
 
 import streamlit as st
+# Debug: show whether the secret is present
+secret_blob = st.secrets.get("gcp", {}).get("service_account")
+st.write("🔍 Secret loaded:", bool(secret_blob), "— length:", len(secret_blob or ""))
+
+# Optionally peek at the first 100 chars (redact the rest)
+st.write("Preview:", (secret_blob or "")[:100] + "…")
+st.stop()  # stop here so you can see these messages
+
 import preprocessor
 import helper
 import matplotlib.pyplot as plt
