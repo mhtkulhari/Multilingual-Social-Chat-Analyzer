@@ -1,3 +1,5 @@
+
+
 /* 1. Global font & page background */
 body, .reportview-container {
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
@@ -22,7 +24,8 @@ div[data-testid="metric-container"] {
 h1, .css-18e3th9 {
   color: #334e68 !important;
   border-bottom: 3px solid #627d98 !important;
-  padding-bottom: 8px !important;
+  padding-bottom: 2px !important;
+  margin-bottom: 5px !important;
 }
 
 /* 5. Button style & hover effect */
