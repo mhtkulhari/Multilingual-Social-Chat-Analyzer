@@ -22,6 +22,22 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
 # 4) Initialize the client
 translate_client = translate.Client()
 
+if translate_client is not None:
+    try:
+        # 1) Check that credentials file exists
+        creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", None)
+        st.write("🔑 Using credentials file at:", creds_path)
+
+        # 2) Send a tiny test to the Translate API
+        sample = "Bonjour le monde"
+        result = translate_client.translate(sample, target_language="en")
+        st.write("🔄 Translate test:", sample, "→", result["translatedText"])
+        st.success("✅ Google Translate is working!")
+    except Exception as e:
+        st.error("❌ Translate self-test failed: " + str(e))
+else:
+    st.warning("⚠️ No translate_client: translations are disabled.")
+
 def parse_whatsapp_chat(file_content):
     lines = file_content.splitlines()
     system_patterns = [
