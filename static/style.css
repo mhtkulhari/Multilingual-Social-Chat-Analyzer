@@ -34,7 +34,7 @@ h1, .css-18e3th9 {
   transition: background-color 0.2s ease !important;
 }
 .stButton>button:hover {
-  background-color: #334e68 !important;
+  background-color: #1fc4bf !important;
 }
 
 /* 6. DataFrame zebra row striping */
@@ -49,4 +49,31 @@ h1, .css-18e3th9 {
 .element-container .stPlotlyChart, 
 .element-container .stPyplot {
   margin: 0.5rem 0 !important;
+}
+
+/* Change the "Drag and drop file here" text */
+section[data-testid="stFileUploader"] label {
+    font-size: 16px;
+    color: #444;
+}
+section[data-testid="stFileUploader"] label::before {
+    content: "WhatsApp Chat";
+    display: block;
+    font-weight: bold;
+}
+
+/* Hide default text */
+section[data-testid="stFileUploader"] label span {
+    display: none;
+}
+
+/* Change "Browse files" button text */
+section[data-testid="stFileUploader"] button {
+    font-size: 16px;
+}
+section[data-testid="stFileUploader"] button::before {
+    content: "Upload";
+}
+section[data-testid="stFileUploader"] button span {
+    display: none;
 }
