@@ -1,4 +1,4 @@
-
+/*style.css*/
 
 /* 1. Global font & page background */
 body, .reportview-container {
@@ -21,11 +21,29 @@ div[data-testid="metric-container"] {
 }
 
 /* 4. Header color & underline */
-h1, .css-18e3th9 {
+/* h1, .css-18e3th9 {
   color: #334e68 !important;
-  border-bottom: 3px solid #627d98 !important;
-  padding-bottom: 2px !important;
-  margin-bottom: 5px !important;
+  border-bottom: 4px solid #627d98 !important;
+  padding-bottom: 6px !important;
+} */
+
+/* Change the color, size, weight, etc. of the sidebar title */
+section[data-testid="stSidebar"] h1 {
+    color: #334e68 !important;      /* Match your desired color */
+    font-size: 1.5rem !important;     /* Adjust as you like */
+    padding-bottom: 3.5px !important;
+    border-bottom: 2px solid #627d98 !important;   /* Remove underline if needed */
+    text-align: center;               /* Centered (optional) */
+    margin-bottom: 0.5em;
+}
+
+/* Center metric label and value in each column */
+.stMetric, .stMetricLabel, .stMetricValue {
+    text-align: center !important;
+    justify-content: center !important;
+    align-items: center !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
 /* 5. Button style & hover effect */
@@ -63,4 +81,49 @@ h1, .css-18e3th9 {
 /* ensure the dropdown items themselves also show the pointer */
 .stSidebar [role="option"]:hover {
   cursor: pointer !important;
+}
+
+/* Force pointer cursor on the entire date‐input area */
+div[data-testid="stDateInput"] *,
+div[data-baseweb="datepicker"] * {
+  cursor: pointer !important;
+}
+
+/* If you want to keep the caret when focused but still show pointer on hover */
+div[data-testid="stDateInput"] input:hover,
+div[data-baseweb="datepicker"] input:hover {
+  cursor: pointer !important;
+}/* Add this block to your static/style.css file */
+
+.analysis-title {
+    color: #6f2382;
+    font-size: 2.5rem;
+    font-weight: 500;
+    margin-bottom: 0.3em;
+    border-bottom: 3.5px solid #441350;
+    padding-bottom: 0.05em;
+    letter-spacing: 1px;
+}
+
+.participant-label {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 0.5em;
+    margin-bottom: 0.15em;
+}
+.participant-title {
+    color: #042129;
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 0.5em;
+    margin-bottom: 0.15em;
+    text-decoration: underline;
+}
+
+/* Change subheader color to match "SOCIAL CHAT ANALYZER" title */
+.stHeading, h2 {
+    color: #334e68 !important;
+    border-bottom: 3px solid #627d98 !important;
+    padding-bottom: 5px !important;
+
 }
