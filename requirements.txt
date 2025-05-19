@@ -7,3 +7,4 @@ seaborn
 urlextract
 emoji
 wordcloud
+regex
