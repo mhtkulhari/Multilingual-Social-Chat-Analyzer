@@ -4,6 +4,7 @@ import os
 from google.cloud import translate_v2 as translate
 import html
 import streamlit as st
+import json
 
 # 1) Read the JSON blob from secrets
 sa_json = st.secrets["gcp"]["service_account"]
