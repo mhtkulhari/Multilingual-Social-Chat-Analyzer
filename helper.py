@@ -349,63 +349,78 @@ def detect_language_api(text):
     """
     Detects the dominant language in `text` using Gemini,
     returning only the language name from the supported set.
+    On any error, returns a custom message.
     """
-    if not text or not text.strip():
-        return "Unknown"
-    model = genai.GenerativeModel(model_name="models/gemini-1.5-pro-latest")  # Or as per your config
-    chat = model.start_chat(history=[])
-    prompt = (
-        "Given the following WhatsApp chat snippet, detect the *majority* language in which most words are written. "
-        "Possible answers: English, Hindi, Hinglish, Marathi, Gujarati, Bengali, Punjabi, Tamil, Telugu, Kannada, Malayalam. "
-        "Respond ONLY with the language name, nothing else:\n\n"
-        f"{text}"
-    )
-    response = chat.send_message(prompt)
-    lang = response.text.strip()
-    # Post-process to clean possible Gemini extras
     try:
-        data = json.loads(lang)
-        for v in data.values():
-            if isinstance(v, str):
-                return v.strip()
-        return lang
+        if not text or not text.strip():
+            return "Unknown"
+        model = genai.GenerativeModel(model_name="models/gemini-1.5-pro-latest")
+        chat = model.start_chat(history=[])
+        prompt = (
+            "Given the following WhatsApp chat snippet, detect the *majority* language in which most words are written. "
+            "Possible answers: English, Hindi, Hinglish, Marathi, Gujarati, Bengali, Punjabi, Tamil, Telugu, Kannada, Malayalam. "
+            "Respond ONLY with the language name, nothing else:\n\n"
+            f"{text}"
+        )
+        response = chat.send_message(prompt)
+        lang = response.text.strip()
+        # Post-process to clean possible Gemini extras
+        try:
+            data = json.loads(lang)
+            for v in data.values():
+                if isinstance(v, str):
+                    return v.strip()
+            return lang
+        except Exception:
+            if ":" in lang:
+                lang = lang.split(":", 1)[-1].strip()
+            lang = lang.strip("\"' ")
+            return lang
     except Exception:
-        if ":" in lang:
-            lang = lang.split(":", 1)[-1].strip()
-        lang = lang.strip("\"' ")
-        return lang
+        return "Language Detection is taking too long. Meanwhile, explore other features!"
+
 
 def get_dominant_language_single(df):
     """
     Uses the *first 5 cleaned messages* for a participant to detect dominant language.
+    On any error, returns a custom message.
     """
-    if df.empty:
-        return "Unknown"
-    msgs = df["Message"].dropna()
-    # Filter out <Media omitted>
-    msgs = msgs[~msgs.str.contains("<Media omitted>", na=False)]
-    if msgs.empty:
-        return "Unknown"
-    # Clean each message, remove links and emojis
-    cleaned = [clean_text_for_lang_detection(m) for m in msgs if m.strip()]
-    cleaned = [m for m in cleaned if m]  # Only non-empty
-    if not cleaned:
-        return "Unknown"
-    sample = cleaned[:5]
-    prompt_text = " ".join(sample)
-    return detect_language_api(prompt_text)
+    try:
+        if df.empty:
+            return "Unknown"
+        msgs = df["Message"].dropna()
+        # Filter out <Media omitted>
+        msgs = msgs[~msgs.str.contains("<Media omitted>", na=False)]
+        if msgs.empty:
+            return "Unknown"
+        # Clean each message, remove links and emojis
+        cleaned = [clean_text_for_lang_detection(m) for m in msgs if m.strip()]
+        cleaned = [m for m in cleaned if m]  # Only non-empty
+        if not cleaned:
+            return "Unknown"
+        sample = cleaned[:5]
+        prompt_text = " ".join(sample)
+        return detect_language_api(prompt_text)
+    except Exception:
+        return "Language Detection is taking too long. Meanwhile, explore other features!"
+
 
 def get_dominant_language_all(df):
     """
     Returns list of dicts: [{speaker, language}, ...] for all participants.
+    On any error, returns a custom message.
     """
-    results = []
-    speakers = df["Speaker"].unique()
-    for speaker in speakers:
-        df_s = df[df["Speaker"] == speaker]
-        lang = get_dominant_language_single(df_s)
-        results.append({"speaker": speaker, "language": lang})
-    return results
+    try:
+        results = []
+        speakers = df["Speaker"].unique()
+        for speaker in speakers:
+            df_s = df[df["Speaker"] == speaker]
+            lang = get_dominant_language_single(df_s)
+            results.append({"speaker": speaker, "language": lang})
+        return results
+    except Exception:
+        return "Language Detection is taking too long. Meanwhile, explore other features!"
+
 
 #AI ANALYSIS
 
