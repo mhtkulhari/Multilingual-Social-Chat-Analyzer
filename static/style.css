@@ -127,3 +127,22 @@ div[data-baseweb="datepicker"] input:hover {
     padding-bottom: 5px !important;
 
 }
+
+/* ==== AI Analysis Container ==== */
+/* .ai-section {
+  border: 1px solid #ccc;
+  background: #fafafa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+} */
+
+/* ==== AI Summary Display Box ==== */
+.ai-summary-box {
+  border: 1px solid #000;
+  background: #fafafa;
+  padding: 1rem;
+  border-radius: 4px;
+  white-space: pre-wrap;   /* preserve line breaks */
+  margin-bottom: 1rem;
+}
