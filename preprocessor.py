@@ -3,31 +3,32 @@
 import re
 import pandas as pd
 import os
-from google.cloud import translate_v2 as translate
 import html
 import streamlit as st
 import json
 import tempfile
 import regex
 
-# 1) Read the JSON blob from secrets
-sa_json = st.secrets["gcp"]["service_account"]
+from google.cloud import translate_v2 as translate
 
-# 2) Parse it and write to a temp file
-sa_info = json.loads(sa_json)
-with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as fp:
-    json.dump(sa_info, fp)
-    creds_path = fp.name
+# # 1) Read the JSON blob from secrets
+# sa_json = st.secrets["gcp"]["service_account"]
 
-# 3) Point Google’s SDK at that file
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+# # 2) Parse it and write to a temp file
+# sa_info = json.loads(sa_json)
+# with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as fp:
+#     json.dump(sa_info, fp)
+#     creds_path = fp.name
 
-# 4) Initialize the client
-translate_client = translate.Client()
+# # 3) Point Google’s SDK at that file
+# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+
+# # 4) Initialize the client
+# translate_client = translate.Client()
 
 # Set up Google Cloud Translate credentials
-# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "steady-shard-458110-g8-3fb5c1444f42.json"
-# translate_client = translate.Client()
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "steady-shard-458110-g8-3fb5c1444f42.json"
+translate_client = translate.Client()
 
 def parse_whatsapp_chat(file_content):
     # Split the content into lines

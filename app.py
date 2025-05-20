@@ -7,9 +7,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 import matplotlib as mpl
-from matplotlib.ticker import MultipleLocator, MaxNLocator
 import calendar
 import regex
+
+from matplotlib.ticker import MultipleLocator, MaxNLocator
 
 # --- Register all the Noto Sans fonts you need ---
 FONT_FILES = {
@@ -106,7 +107,8 @@ if uploaded_file is not None:
         "Online Status",
         "Most Busy Speakers",
         "Most Common Words",
-        "Emoji Analysis"
+        "Emoji Analysis",
+        "Dominant Language"
     ]
     selected_analyses = st.sidebar.multiselect(
         "🔍 **Analysis Type(s)**",
@@ -122,7 +124,7 @@ if uploaded_file is not None:
     summary_language = st.sidebar.selectbox(
         "🌐 **Summary Language**",
         [
-            "English","Hindi","Marathi","Gujarati","Bengali",
+            "English","Hindi","Hinglish","Marathi","Gujarati","Bengali", 
             "Punjabi","Tamil","Telugu","Kannada","Malayalam"
         ],
         index=0,
@@ -313,10 +315,25 @@ if uploaded_file is not None:
                     st.pyplot(fig)
                     mpl.rcParams['font.family'] = FONT_PROPS['Latin']
 
-                if analysis in ["Overall", "Emoji Analysis"]:
-                    emoji_df = helper.emoji_helper(participant, part_df)
-                    st.subheader("😊 Emoji Analysis")
-                    st.dataframe(emoji_df, hide_index=True)
+                if analysis in ["Overall", "Dominant Language"]:
+                    st.subheader("🌐 Dominant Language")
+                    # Show table if "Everyone", else show only the text
+                    if participant == "Everyone":
+                        langs = helper.get_dominant_language_all(df)
+                        # Count frequencies and order by most frequent language
+                        lang_counts = pd.Series([row["language"] for row in langs]).value_counts()
+                        order = list(lang_counts.index)
+                        # Move Unknown to end
+                        if "Unknown" in order:
+                            order.remove("Unknown")
+                            order.append("Unknown")
+                        df_lang = pd.DataFrame(langs).rename(columns={"speaker": "Participant", "language": "Language"})
+                        df_lang["Language"] = pd.Categorical(df_lang["Language"], categories=order, ordered=True)
+                        df_lang = df_lang.sort_values("Language")
+                        st.dataframe(df_lang, hide_index=True)
+                    else:
+                        lang = helper.get_dominant_language_single(part_df)
+                        st.write( f"**{participant}** mostly used <u><i>{lang}</i></u>.",unsafe_allow_html=True)
 
             else:
                 # MULTI-PARTICIPANT SIDE-BY-SIDE OUTPUT CASE
@@ -451,6 +468,32 @@ if uploaded_file is not None:
                             emoji_df = helper.emoji_helper(participant, part_df)
                             st.subheader("😊 Emoji Analysis")
                             st.dataframe(emoji_df, hide_index=True)
+
+
+                        if analysis in ["Overall", "Dominant Language"]:
+                            st.subheader("🌐 Dominant Language")
+                            
+                            if participant == "Everyone":
+                                # Only "Everyone" column gets the DataFrame
+                                langs = helper.get_dominant_language_all(df)
+                                lang_counts = pd.Series([row["language"] for row in langs]).value_counts()
+                                order = list(lang_counts.index)
+                                if "Unknown" in order:
+                                    order.remove("Unknown")
+                                    order.append("Unknown")
+                                df_lang = pd.DataFrame(langs).rename(columns={"speaker": "Participant", "language": "Language"})
+                                df_lang["Language"] = pd.Categorical(df_lang["Language"], categories=order, ordered=True)
+                                df_lang = df_lang.sort_values("Language")
+                                st.dataframe(df_lang, hide_index=True)
+                            else:
+                                # Individual column: show only that participant's dominant language
+                                lang = helper.get_dominant_language_single(part_df)
+                                st.write(
+                                    f"**{participant}** mostly used <u><i>{lang}</i></u>.",
+                                    unsafe_allow_html=True
+                                )
+
+
             pass
 
     # === BUILD CONVERSATION FOR AI ===
@@ -543,7 +586,8 @@ if uploaded_file is not None:
             else:
                 st.markdown(f"""<p style="font-size:18px; line-height:1.3;"><strong>{p}</strong> is feeling <em><u>{pe}</u></em>.</p>""",unsafe_allow_html=True)
 
-    # — RELATIONSHIP ANALYSIS —
+
+# — RELATIONSHIP ANALYSIS —
     if run_rel_btn:
         df_placeholder.empty()
         st.subheader("🔗 Relationship Analysis")
@@ -614,4 +658,3 @@ if uploaded_file is not None:
             label = describe(score)
 
             st.markdown(f"""<p style="font-size:22px; line-height:1.3;"><strong>{s1}</strong> and <strong>{s2}</strong> <em>{label}</em> with each other.<br><u>[ Agreement Score is {score:.4f} ]</u></p>""",unsafe_allow_html=True)
-

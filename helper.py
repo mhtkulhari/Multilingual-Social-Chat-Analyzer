@@ -1,34 +1,30 @@
 #helper.py
 
-from urlextract import URLExtract
 import pandas as pd
-from collections import Counter
 import emoji
-from wordcloud import WordCloud
-from types import SimpleNamespace
 import re
 import seaborn as sns
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
-from matplotlib.colors import LinearSegmentedColormap
-
 import json
 import math
-from itertools import combinations
 import google.generativeai as genai
-from app.ml_models.summary_model.config import (
-    DEFAULT_MODEL_NAME,
-    DEFAULT_MODEL_CHAT_HISTORY,
-    GEMINI_API_KEY
-)
-from google.api_core.exceptions import NotFound
 import streamlit as st
+
 from app.ml_models.summary_model.model import SummaryModel
 from app.ml_models.emotion_model.model import EmotionModel
 from app.ml_models.encoder_model.model import TextEncoderModel
 from app.ml_models.clustering_model.model import TextClusteringModel
 from app.ml_models.agreement_model.model import TextAgreementModel
 from app.config import DECAY_FACTOR
+from urlextract import URLExtract
+from collections import Counter
+from wordcloud import WordCloud
+from types import SimpleNamespace
+from matplotlib.ticker import MaxNLocator
+from matplotlib.colors import LinearSegmentedColormap
+from itertools import combinations
+from app.ml_models.summary_model.config import (DEFAULT_MODEL_NAME,DEFAULT_MODEL_CHAT_HISTORY,GEMINI_API_KEY)
+from google.api_core.exceptions import NotFound
 
 #1
 def fetch_stats(selected_Speaker,df):
@@ -341,6 +337,75 @@ def emoji_helper(selected_Speaker, df):
     
     return emoji_df
 
+def clean_text_for_lang_detection(text):
+    # Remove links
+    text = re.sub(r"http\S+|www\.\S+", "", text)
+    # Remove emojis (very basic pattern, you can expand if needed)
+    text = re.sub(r"[^\w\s,.!?]", "", text)
+    # Remove extra whitespace
+    return text.strip()
+
+def detect_language_api(text):
+    """
+    Detects the dominant language in `text` using Gemini,
+    returning only the language name from the supported set.
+    """
+    if not text or not text.strip():
+        return "Unknown"
+    model = genai.GenerativeModel(model_name="models/gemini-1.5-pro-latest")  # Or as per your config
+    chat = model.start_chat(history=[])
+    prompt = (
+        "Given the following WhatsApp chat snippet, detect the *majority* language in which most words are written. "
+        "Possible answers: English, Hindi, Hinglish, Marathi, Gujarati, Bengali, Punjabi, Tamil, Telugu, Kannada, Malayalam. "
+        "Respond ONLY with the language name, nothing else:\n\n"
+        f"{text}"
+    )
+    response = chat.send_message(prompt)
+    lang = response.text.strip()
+    # Post-process to clean possible Gemini extras
+    try:
+        data = json.loads(lang)
+        for v in data.values():
+            if isinstance(v, str):
+                return v.strip()
+        return lang
+    except Exception:
+        if ":" in lang:
+            lang = lang.split(":", 1)[-1].strip()
+        lang = lang.strip("\"' ")
+        return lang
+
+def get_dominant_language_single(df):
+    """
+    Uses the *first 5 cleaned messages* for a participant to detect dominant language.
+    """
+    if df.empty:
+        return "Unknown"
+    msgs = df["Message"].dropna()
+    # Filter out <Media omitted>
+    msgs = msgs[~msgs.str.contains("<Media omitted>", na=False)]
+    if msgs.empty:
+        return "Unknown"
+    # Clean each message, remove links and emojis
+    cleaned = [clean_text_for_lang_detection(m) for m in msgs if m.strip()]
+    cleaned = [m for m in cleaned if m]  # Only non-empty
+    if not cleaned:
+        return "Unknown"
+    sample = cleaned[:5]
+    prompt_text = " ".join(sample)
+    return detect_language_api(prompt_text)
+
+def get_dominant_language_all(df):
+    """
+    Returns list of dicts: [{speaker, language}, ...] for all participants.
+    """
+    results = []
+    speakers = df["Speaker"].unique()
+    for speaker in speakers:
+        df_s = df[df["Speaker"] == speaker]
+        lang = get_dominant_language_single(df_s)
+        results.append({"speaker": speaker, "language": lang})
+    return results
 
 #AI ANALYSIS
 
@@ -351,6 +416,7 @@ def summarize_conversation(conversation, participants, style="Detailed"):
       - "Concise": first 50% of sentences
       - "Detailed": entire summary
     """
+    import math, re, json
     # 1) Filter by speaker
     if "Everyone" not in participants:
         conversation = [
@@ -362,16 +428,18 @@ def summarize_conversation(conversation, participants, style="Detailed"):
     def call_and_extract(conv):
         try:
             raw = model.predict_summmary({"conversation": conv})
-        except NotFound:
-            st.error("⚠️ Model not found—please update DEFAULT_MODEL_NAME.")
-            return ""
-        if isinstance(raw, str):
-            try:
-                data = json.loads(raw)
-                return data.get("report", {}).get("summary") or data.get("summary", raw)
-            except json.JSONDecodeError:
-                return raw
-        return raw.get("report", {}).get("summary", "")
+            if isinstance(raw, str):
+                try:
+                    data = json.loads(raw)
+                    # Try both keys for backward-compatibility
+                    return data.get("report", {}).get("summary") or data.get("summary", raw)
+                except json.JSONDecodeError:
+                    return raw
+            else:
+                return raw.get("report", {}).get("summary", "")
+        except Exception:
+            # Handles NotFound, quota, API, network, etc.
+            return "Summary is taking too long to be generated. Meanwhile, explore other features!"
 
     # 2) Get full summary
     full_summary = call_and_extract(conversation).strip()
@@ -393,44 +461,62 @@ def summarize_conversation(conversation, participants, style="Detailed"):
     selected = sentences[:count]
     return " ".join(selected).strip()
 
+
 # configure once
 genai.configure(api_key=GEMINI_API_KEY)
 
 def translate_summary(text: str, target_lang: str) -> str:
     """
     Translates `text` into `target_lang` and returns only the translated text.
+    For Hinglish, translates to Hindi in Roman (English) script.
+    If API limit or any error occurs, returns a user-friendly message.
     """
-    # 1) Start a fresh chat
-    model = genai.GenerativeModel(
-        model_name=DEFAULT_MODEL_NAME,
-        generation_config=None,
-        safety_settings=None
-    )
-    chat = model.start_chat(history=DEFAULT_MODEL_CHAT_HISTORY)
-
-    # 2) Strict prompt: ask for plain text only
-    prompt = (
-        f"Translate the following summary into {target_lang}.\n"
-        "Respond *only* with the translated text — no JSON, no quotes, no explanation:\n\n"
-        f"{text}"
-    )
-    response = chat.send_message(prompt)
-    raw = response.text.strip()
-
-    # 3) If it somehow still wrapped JSON, extract:
     try:
-        data = json.loads(raw)
-        # grab the field or fallback to entire text
-        return data.get("summary", next(iter(data.values()), raw))
-    except json.JSONDecodeError:
-        return raw
+        model = genai.GenerativeModel(
+            model_name=DEFAULT_MODEL_NAME,
+            generation_config=None,
+            safety_settings=None
+        )
+        chat = model.start_chat(history=DEFAULT_MODEL_CHAT_HISTORY)
+
+        if target_lang.lower() == "hinglish":
+            prompt = (
+                "Translate the following summary into Hindi written in English (Roman) script. "
+                "For example, 'क्या कर रहा है?' should be translated as 'kya kar raha hai?'.\n"
+                "Respond only with the translated text — no JSON, no quotes, no explanation:\n\n"
+                f"{text}"
+            )
+        else:
+            prompt = (
+                f"Translate the following summary into {target_lang}.\n"
+                "Respond only with the translated text — no JSON, no quotes, no explanation:\n\n"
+                f"{text}"
+            )
+
+        response = chat.send_message(prompt)
+        raw = response.text.strip()
+        try:
+            import json
+            data = json.loads(raw)
+            return data.get("summary", next(iter(data.values()), raw))
+        except Exception:
+            return raw
+    except Exception:
+        # Handles API quota, network, or other exceptions
+        return "Summary is taking too long to be generated. Meanwhile, explore other features!"
+
+
     
 def emotion_analysis(conversation, participants):
     """
     Returns a list of dicts:
       { speaker, primary_emotion, secondary_emotion }
     for the selected participants (or 'Everyone').
+    If any error occurs, returns a special dict with a 'message' key.
     """
+    from types import SimpleNamespace
+    from collections import Counter
+
     # 1) Filter by participant
     if "Everyone" in participants:
         conv = conversation
@@ -447,90 +533,97 @@ def emotion_analysis(conversation, participants):
     if not dialogs:
         return []  # nothing to analyze
 
-    # 3) Call the emotion model
+    # 3) Call the emotion model, handling ALL exceptions
     model = EmotionModel()
     try:
         labels = model.predict_emotions(dialogs)
-    except NotFound:
-        st.error("⚠️ Emotion model not found—please check your configuration.")
+        # If the model returned a JSON string, parse out the list under "report"
+        if isinstance(labels, str):
+            parsed = json.loads(labels)
+            labels = parsed.get("report", [])
+        # 4) Count per speaker
+        speaker_to_counter = {d.speaker: Counter() for d in dialogs}
+        for label, dlg in zip(labels, dialogs):
+            speaker_to_counter[dlg.speaker][label] += 1
+        # 5) Build the final report
+        report = []
+        for speaker, counter in speaker_to_counter.items():
+            top2 = counter.most_common(2)
+            primary   = top2[0][0] if len(top2) >= 1 else None
+            secondary = top2[1][0] if len(top2) >= 2 else None
+            report.append({
+                "speaker": speaker,
+                "primary_emotion": primary,
+                "secondary_emotion": secondary
+            })
+        return report
+    except Exception:
+        # Handles NotFound, API quota, timeout, etc.
+        st.warning("Emotion analysis is taking too long. Meanwhile, explore other features!")
+        # Optionally, return an empty list or a special error object
         return []
 
-    # If the model returned a JSON string, parse out the list under "report"
-    if isinstance(labels, str):
-        parsed = json.loads(labels)
-        labels = parsed.get("report", [])
-
-    # 4) Count per speaker
-    # Build a Counter for each speaker, then tally labels
-    speaker_to_counter = {d.speaker: Counter() for d in dialogs}
-    for label, dlg in zip(labels, dialogs):
-        speaker_to_counter[dlg.speaker][label] += 1
-
-    # 5) Build the final report
-    report = []
-    for speaker, counter in speaker_to_counter.items():
-        top2 = counter.most_common(2)
-        primary   = top2[0][0] if len(top2) >= 1 else None
-        secondary = top2[1][0] if len(top2) >= 2 else None
-        report.append({
-            "speaker": speaker,
-            "primary_emotion": primary,
-            "secondary_emotion": secondary
-        })
-
-    return report
 
 def relationship_analysis(conversation, participants, all_combinations=False):
     """
     Returns agreement scores for each speaker-pair.
     If all_combinations=False and exactly two participants are chosen,
     returns only that pair; otherwise returns all pairs.
+    If any error occurs, shows a warning and returns [].
     """
-    # prepare embeddings + clusters
-    encoder   = TextEncoderModel()
-    clusterer = TextClusteringModel()
-    agreer    = TextAgreementModel()
+    try:
+        # prepare embeddings + clusters
+        encoder   = TextEncoderModel()
+        clusterer = TextClusteringModel()
+        agreer    = TextAgreementModel()
 
-    dialogs    = [m for m in conversation if len(m["message"].split()) >= 3]
-    texts      = [m["message"] for m in dialogs]
-    embeddings = encoder.calculate_embeddings(texts)
-    labels     = clusterer.calculate_clusters(embeddings)
+        dialogs    = [m for m in conversation if len(m["message"].split()) >= 3]
+        texts      = [m["message"] for m in dialogs]
+        embeddings = encoder.calculate_embeddings(texts)
+        labels     = clusterer.calculate_clusters(embeddings)
 
-    # group messages by cluster label
-    clusters = {}
-    for dlg, lbl in zip(dialogs, labels):
-        if lbl != -1:
-            clusters.setdefault(lbl, []).append(dlg)
+        # group messages by cluster label
+        clusters = {}
+        for dlg, lbl in zip(dialogs, labels):
+            if lbl != -1:
+                clusters.setdefault(lbl, []).append(dlg)
 
-    speakers = set(m["speaker"] for m in conversation)
-    pairs    = list(combinations(speakers, 2))
+        speakers = set(m["speaker"] for m in conversation)
+        from itertools import combinations
+        pairs    = list(combinations(speakers, 2))
 
-    results = []
-    for sp1, sp2 in pairs:
-        scores, weights = [], []
-        for cluster in clusters.values():
-            for i in range(len(cluster)):
-                for j in range(i+1, len(cluster)):
-                    d1, d2 = cluster[i], cluster[j]
-                    if {d1["speaker"], d2["speaker"]} == {sp1, sp2}:
-                        lbl, sc = agreer.predict_category(d1["message"], d2["message"])
-                        if lbl == 1:
-                            sc = -sc
-                        dist = abs(d1["index"] - d2["index"])
-                        w    = math.exp(-DECAY_FACTOR * (dist - 1))
-                        scores.append(sc * w)
-                        weights.append(w)
-        score = sum(scores)/sum(weights) if weights else 0.0
-        results.append({
-            "speaker1": sp1,
-            "speaker2": sp2,
-            "agreement_score": score
-        })
+        results = []
+        DECAY_FACTOR = 0.15  # Use your defined value if not global
+        import math
 
-    # if exactly two chosen & not all_combinations, filter to that pair
-    if not all_combinations and len(participants) == 2:
-        want = set(participants)
-        results = [r for r in results
-                   if set((r["speaker1"], r["speaker2"])) == want]
+        for sp1, sp2 in pairs:
+            scores, weights = [], []
+            for cluster in clusters.values():
+                for i in range(len(cluster)):
+                    for j in range(i+1, len(cluster)):
+                        d1, d2 = cluster[i], cluster[j]
+                        if {d1["speaker"], d2["speaker"]} == {sp1, sp2}:
+                            lbl, sc = agreer.predict_category(d1["message"], d2["message"])
+                            if lbl == 1:
+                                sc = -sc
+                            dist = abs(d1["index"] - d2["index"])
+                            w    = math.exp(-DECAY_FACTOR * (dist - 1))
+                            scores.append(sc * w)
+                            weights.append(w)
+            score = sum(scores)/sum(weights) if weights else 0.0
+            results.append({
+                "speaker1": sp1,
+                "speaker2": sp2,
+                "agreement_score": score
+            })
 
-    return results
+        # if exactly two chosen & not all_combinations, filter to that pair
+        if not all_combinations and len(participants) == 2:
+            want = set(participants)
+            results = [r for r in results
+                       if set((r["speaker1"], r["speaker2"])) == want]
+
+        return results
+    except Exception:
+        st.warning("Relationship analysis is taking too long. Meanwhile, explore other features!")
+        return []
