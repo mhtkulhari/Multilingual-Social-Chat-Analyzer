@@ -1,3 +1,5 @@
+#app.py
+
 import streamlit as st
 import preprocessor
 import helper
@@ -82,6 +84,11 @@ if uploaded_file is not None:
     ]
     df_placeholder.dataframe(df)
 
+    # Make a copy for AI analyses only
+    df_analysis = df.copy()
+
+    st.sidebar.markdown('<hr style="border:none;border-top:2.2px solid #334e68;margin:6px 0;">',unsafe_allow_html=True)
+
     # ==== Multiple Participant Selector ====
     participant_options = sorted(df['Speaker'].unique().tolist())
     participant_options.insert(0, "Everyone")
@@ -106,8 +113,69 @@ if uploaded_file is not None:
         analysis_types,
         default=["Overall"]
     )
+    run = st.sidebar.button("**Run Analysis**")
+    
+    # --- NEW: AI Buttons in Sidebar ---
+    st.sidebar.markdown('<hr style="border:none;border-top:2.2px solid #334e68;margin:6px 0;">', unsafe_allow_html=True)
 
-    if st.sidebar.button("**Run Analysis**"):
+    # — NEW: Summary Language selector —
+    summary_language = st.sidebar.selectbox(
+        "🌐 **Summary Language**",
+        [
+            "English","Hindi","Marathi","Gujarati","Bengali",
+            "Punjabi","Tamil","Telugu","Kannada","Malayalam"
+        ],
+        index=0,
+        key="summary_language"
+    )
+    # — end language selector —
+
+
+    # SUMMARY with participant selector
+    summary_style = st.sidebar.radio(
+        "✏️ **Summary Style**",
+        ["Short", "Concise", "Detailed"],
+        index=2,                    # default to "Concise"
+        key="summary_style",
+        horizontal=True
+    )
+    summary_parts = st.sidebar.multiselect(
+        "📝 **Summary Participant(s)**",
+        participant_options,
+        default=["Everyone"],
+        key="summary_select"
+    )
+    summary_all = st.sidebar.checkbox("All Participants", key="summary_all")
+    summary_btn = st.sidebar.button("SUMMARY")
+
+    st.sidebar.markdown('<hr style="border:none;border-top:2.2px solid #334e68;margin:6px 0;">', unsafe_allow_html=True)
+
+    # EMOTION ANALYSIS
+    emo_parts = st.sidebar.multiselect(
+        "🎭 **Emotion Analysis Participant(s)**",
+        participant_options,
+        default=["Everyone"],
+        key="emo_select"
+    )
+    run_emo_btn = st.sidebar.button("**EMOTION ANALYSIS**")
+
+    st.sidebar.markdown('<hr style="border:none;border-top:2.2px solid #334e68;margin:6px 0;">', unsafe_allow_html=True)
+
+    # RELATIONSHIP ANALYSIS
+    rel_choices = [p for p in participant_options if p != "Everyone"]
+    rel_parts = st.sidebar.multiselect(
+        "🤝 **Choose 2 Participants for Relationship**",
+        rel_choices,
+        key="rel_select"
+    )
+    all_combo = st.sidebar.checkbox("All combinations")
+    run_rel_btn = st.sidebar.button("**RELATIONSHIP**")
+
+    st.sidebar.markdown('<hr style="border:none;border-top:2.2px solid #334e68;margin:6px 0;">', unsafe_allow_html=True)
+
+    
+    # === EXISTING ANALYSIS ===
+    if run:
         df_placeholder.empty()
 
         for analysis in selected_analyses:
@@ -383,3 +451,167 @@ if uploaded_file is not None:
                             emoji_df = helper.emoji_helper(participant, part_df)
                             st.subheader("😊 Emoji Analysis")
                             st.dataframe(emoji_df, hide_index=True)
+            pass
+
+    # === BUILD CONVERSATION FOR AI ===
+    df_ai = preprocessor.clean_translated_messages(df_analysis)
+    conversation = [
+        {"speaker": row["Speaker"],
+         "message": row["Translated_Message"],
+         "index": int(row["msg_index"])}
+        for _, row in df_ai.iterrows()
+    ]
+
+    if summary_btn:
+        df_placeholder.empty()
+        st.subheader("📝 Summary")
+        if summary_all:
+            parts = [p for p in participant_options if p != "Everyone"]
+        else:
+            parts = summary_parts
+
+        for part in parts:
+            if part == "Everyone":
+                part_conv = conversation
+            else:
+                part_conv = [m for m in conversation if m["speaker"] == part]
+
+            # 1) generate in‐style summary
+            part_summary = helper.summarize_conversation(
+                part_conv, [part], summary_style
+            )
+
+            # 2) translate if needed
+            if summary_language != "English" and part_summary:
+                part_summary = helper.translate_summary(
+                    part_summary, summary_language
+                )
+
+             # 3) render
+            st.markdown(
+                f"<span class='participant-label'>👤 Participant:  </span>"
+                f"<span class='participant-title'>{part}</span>",
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"<div class='ai-summary-box'>{part_summary}</div>",
+                unsafe_allow_html=True
+            )
+
+    
+    if run_emo_btn:
+        df_placeholder.empty()
+        st.subheader("🎭 Emotion Analysis")
+
+        
+        # 1) Clean & prepare the full conversation list
+        df_clean = preprocessor.clean_translated_messages(df_analysis)
+        conversation_list = [
+            {
+                "speaker": r["Speaker"],
+                "message": r["Translated_Message"],
+                "index": int(r["msg_index"])
+            }
+            for _, r in df_clean.iterrows()
+        ]
+
+        # 2) Determine helper argument
+        participants_arg = ["Everyone"] if "Everyone" in emo_parts else emo_parts
+
+        # 3) Call helper once
+        emos = helper.emotion_analysis(conversation_list, participants_arg)
+
+        # 4) Build DataFrame & drop any duplicate speaker rows
+        df_emos = pd.DataFrame(emos).drop_duplicates(subset="speaker")
+        df_emos = df_emos.rename(columns={
+            "speaker": "Participant",
+            "primary_emotion": "Primary Emotion",
+            "secondary_emotion": "Secondary Emotion"
+        })
+
+        # 5) Display table without index
+        st.dataframe(df_emos, hide_index=True)
+
+
+        # 6) Write follow-up sentences by column name
+        for _, row in df_emos.iterrows():
+            p  = row["Participant"]
+            pe = row["Primary Emotion"] or "no clear primary emotion"
+            se = row["Secondary Emotion"]
+            if se:
+                st.markdown(f"""<p style="font-size:18px; line-height:1.3;"><strong>{p}</strong> is feeling <em><u>{pe}</u></em> and <em><u>{se}</u></em>.</p>""",unsafe_allow_html=True)
+            else:
+                st.markdown(f"""<p style="font-size:18px; line-height:1.3;"><strong>{p}</strong> is feeling <em><u>{pe}</u></em>.</p>""",unsafe_allow_html=True)
+
+    # — RELATIONSHIP ANALYSIS —
+    if run_rel_btn:
+        df_placeholder.empty()
+        st.subheader("🔗 Relationship Analysis")
+
+        intervals = [-1, -0.8, -0.1, 0.1, 0.8, 1]
+        labels = [
+            "Strongly Disagree\n[-1, -0.8]",
+            "Disagree\n(-0.8, -0.1]",
+            "Neutral\n(-0.1, 0.1)",
+            "Agree\n[0.1, 0.8)",
+            "Strongly Agree\n[0.8, 1]"
+        ]
+        colors = ['#d7191c', '#fdae61', '#ffffbf', '#a6d96a', '#1a9641']
+
+        fig, ax = plt.subplots(figsize=(10, 1.5))
+        for i in range(5):
+            left = intervals[i]
+            width = intervals[i+1] - intervals[i]
+            ax.barh(0, width, left=left, height=1, color=colors[i])
+
+        for i, lbl in enumerate(labels):
+            mid = (intervals[i] + intervals[i+1]) / 2
+            ax.text(mid, 0, lbl, va='center', ha='center', fontsize=9)
+
+        ax.set_xlim(-1, 1)
+        ax.axis('off')
+        st.pyplot(fig)
+
+
+        # 1) Build a single conversation list (same as emotion)
+        df_clean = preprocessor.clean_translated_messages(df_analysis)
+        conversation_list = [
+            {"speaker": r["Speaker"], "message": r["Translated_Message"], "index": int(r["msg_index"])}
+            for _, r in df_clean.iterrows()
+        ]
+
+        # 2) Helper to map score → label
+        def describe(score: float) -> str:
+            if score >= 0.8:
+                return "Strongly Agree"
+            elif 0.1 <= score < 0.8:
+                return "Agree"
+            elif -0.1 < score < 0.1:
+                return "Neutral"
+            elif -0.8 < score <= -0.1:
+                return "Disagree"
+            else:
+                return "Strongly Disagree"
+
+        # 3) Compute relationships
+        rels = []
+        if len(rel_parts) == 1:
+            # one participant => pair with every other speaker
+            sp1 = rel_parts[0]
+            others = [p for p in participant_options if p not in ("Everyone", sp1)]
+            for sp2 in others:
+                pair = helper.relationship_analysis(conversation_list, [sp1, sp2], False)
+                rels.extend(pair)
+        else:
+            # two or more => use helper directly
+            rels = helper.relationship_analysis(conversation_list, rel_parts, all_combo)
+
+        # 4) Display
+        for r in rels:
+            s1 = r["speaker1"]
+            s2 = r["speaker2"]
+            score = r["agreement_score"]
+            label = describe(score)
+
+            st.markdown(f"""<p style="font-size:22px; line-height:1.3;"><strong>{s1}</strong> and <strong>{s2}</strong> <em>{label}</em> with each other.<br><u>[ Agreement Score is {score:.4f} ]</u></p>""",unsafe_allow_html=True)
+

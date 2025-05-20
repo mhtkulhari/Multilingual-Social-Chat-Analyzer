@@ -1,3 +1,5 @@
+#preprocessor.py
+
 import re
 import pandas as pd
 import os
@@ -7,24 +9,25 @@ import streamlit as st
 import json
 import tempfile
 import regex
-# 1) Read the JSON blob from secrets
-sa_json = st.secrets["gcp"]["service_account"]
 
-# 2) Parse it and write to a temp file
-sa_info = json.loads(sa_json)
-with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as fp:
-    json.dump(sa_info, fp)
-    creds_path = fp.name
+# # 1) Read the JSON blob from secrets
+# sa_json = st.secrets["gcp"]["service_account"]
 
-# 3) Point Google’s SDK at that file
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+# # 2) Parse it and write to a temp file
+# sa_info = json.loads(sa_json)
+# with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as fp:
+#     json.dump(sa_info, fp)
+#     creds_path = fp.name
 
-# 4) Initialize the client
-translate_client = translate.Client()
+# # 3) Point Google’s SDK at that file
+# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+
+# # 4) Initialize the client
+# translate_client = translate.Client()
 
 # Set up Google Cloud Translate credentials
-# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "steady-shard-458110-g8-3fb5c1444f42.json"
-# translate_client = translate.Client()
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "steady-shard-458110-g8-3fb5c1444f42.json"
+translate_client = translate.Client()
 
 def parse_whatsapp_chat(file_content):
     # Split the content into lines
@@ -131,3 +134,27 @@ def translate_text_smart(text):
         return html.unescape(res)
     except:
         return text
+    
+#extra analysis
+
+
+def clean_translated_messages(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    1. Removes '<Media omitted>' and any URLs from Translated_Message.
+    2. Drops rows that become empty.
+    3. Adds a 0-based 'msg_index' column.
+    """
+    df_copy = df.copy()
+
+    def _clean(text):
+        if pd.isna(text):
+            return ""
+        # strip out the tag and any links
+        text = re.sub(r"<Media omitted>", "", text)
+        text = re.sub(r"https?://\S+|www\.\S+", "", text)
+        return text.strip()
+
+    df_copy['Translated_Message'] = df_copy['Translated_Message'].apply(_clean)
+    df_clean = df_copy[df_copy['Translated_Message'].astype(bool)].reset_index(drop=True)
+    df_clean['msg_index'] = range(len(df_clean))
+    return df_clean
