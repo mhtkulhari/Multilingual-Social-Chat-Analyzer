@@ -23,7 +23,7 @@ from types import SimpleNamespace
 from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import LinearSegmentedColormap
 from itertools import combinations
-from app.ml_models.summary_model.config import (DEFAULT_MODEL_NAME,DEFAULT_MODEL_CHAT_HISTORY,GEMINI_API_KEY)
+from app.ml_models.summary_model.config import (DEFAULT_MODEL_NAME,DEFAULT_MODEL_CHAT_HISTORY)
 from google.api_core.exceptions import NotFound
 
 #1
@@ -497,7 +497,8 @@ def summarize_conversation(conversation, participants, style="Detailed"):
     return " ".join(selected).strip()
 
 
-# configure once
+# Access your Gemini API key from Streamlit secrets
+GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=GEMINI_API_KEY)
 @st.cache_data(show_spinner="Generating Summary...")
 def translate_summary(text: str, target_lang: str) -> str:
