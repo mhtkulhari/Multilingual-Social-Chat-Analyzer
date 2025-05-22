@@ -1,3 +1,4 @@
+#https://mohit-kulhari-multilingual-social-chat-analyzer.streamlit.app/
 #app.py
 
 import streamlit as st
@@ -9,6 +10,7 @@ import matplotlib.font_manager as fm
 import matplotlib as mpl
 import calendar
 import regex
+import itertools
 
 from matplotlib.ticker import MultipleLocator, MaxNLocator
 
@@ -56,13 +58,29 @@ uploaded_file = st.session_state.get(uploader_key)
 
 df_placeholder = st.empty()  # Always define at the top
 
+# 1. Cache full preprocessing of file
+@st.cache_data(show_spinner="Chat Data Preprocessing...")
+def preprocess_full_chat(file_content):
+    return preprocessor.parse_whatsapp_chat(file_content)
+
+# 2. Cache date range filtering from already-processed data
+@st.cache_data
+def filter_by_date_range(df_full, start_date, end_date):
+    return df_full[
+        (df_full['Datetime'].dt.date >= start_date) &
+        (df_full['Datetime'].dt.date <= end_date)
+    ].copy()
+
 if uploaded_file is not None:
     file_content = uploaded_file.getvalue().decode("utf-8")
-    df = preprocessor.parse_whatsapp_chat(file_content)
 
-    df['Datetime'] = pd.to_datetime(df['Datetime'])
-    min_date = df['Datetime'].dt.date.min()
-    max_date = df['Datetime'].dt.date.max()
+    # -- Fully preprocess and cache the file
+    df_full = preprocess_full_chat(file_content)
+    df_placeholder.dataframe(df_full)  # Show all preprocessed data first
+
+    # -- Date range selection
+    min_date = df_full['Datetime'].dt.date.min()
+    max_date = df_full['Datetime'].dt.date.max()
 
     date_range = st.sidebar.date_input(
         "🗓️ **Date Range**",
@@ -75,20 +93,18 @@ if uploaded_file is not None:
         st.sidebar.warning("⚠️ Please select complete date range (start–end)")
         st.stop()
 
-    df_placeholder.dataframe(df)
-
     start_date, end_date = date_range
 
-    df = df[
-        (df['Datetime'].dt.date >= start_date) &
-        (df['Datetime'].dt.date <= end_date)
-    ]
-    df_placeholder.dataframe(df)
+    # -- Fast, cached filter by date range
+    df = filter_by_date_range(df_full, start_date, end_date)
+    df_placeholder.dataframe(df)  # Show filtered data
 
-    # Make a copy for AI analyses only
+    # -- Use for analysis
     df_analysis = df.copy()
 
-    st.sidebar.markdown('<hr style="border:none;border-top:2.2px solid #334e68;margin:6px 0;">',unsafe_allow_html=True)
+    st.sidebar.markdown('<hr style="border:none;border-top:2.2px solid #334e68;margin:6px 0;">', unsafe_allow_html=True)
+
+
 
     # ==== Multiple Participant Selector ====
     participant_options = sorted(df['Speaker'].unique().tolist())
@@ -166,11 +182,11 @@ if uploaded_file is not None:
     # RELATIONSHIP ANALYSIS
     rel_choices = [p for p in participant_options if p != "Everyone"]
     rel_parts = st.sidebar.multiselect(
-        "🤝 **Choose 2 Participants for Relationship**",
+        "🤝 **Choose Participants for Relationship**",
         rel_choices,
         key="rel_select"
     )
-    all_combo = st.sidebar.checkbox("All combinations")
+    all_combinations = st.sidebar.checkbox("All combinations")
     run_rel_btn = st.sidebar.button("**RELATIONSHIP**")
 
     st.sidebar.markdown('<hr style="border:none;border-top:2.2px solid #334e68;margin:6px 0;">', unsafe_allow_html=True)
@@ -314,6 +330,11 @@ if uploaded_file is not None:
                     plt.xticks(rotation=0, fontsize=9)
                     st.pyplot(fig)
                     mpl.rcParams['font.family'] = FONT_PROPS['Latin']
+
+                if analysis in ["Overall", "Emoji Analysis"]:
+                            emoji_df = helper.emoji_helper(participant, part_df)
+                            st.subheader("😊 Emoji Analysis")
+                            st.dataframe(emoji_df, hide_index=True)
 
                 if analysis in ["Overall", "Dominant Language"]:
                     st.subheader("🌐 Dominant Language")
@@ -546,7 +567,6 @@ if uploaded_file is not None:
         df_placeholder.empty()
         st.subheader("🎭 Emotion Analysis")
 
-        
         # 1) Clean & prepare the full conversation list
         df_clean = preprocessor.clean_translated_messages(df_analysis)
         conversation_list = [
@@ -558,40 +578,55 @@ if uploaded_file is not None:
             for _, r in df_clean.iterrows()
         ]
 
-        # 2) Determine helper argument
-        participants_arg = ["Everyone"] if "Everyone" in emo_parts else emo_parts
+        # 2) Precompute and cache emotion analysis for all participants ONCE
+        @st.cache_resource(show_spinner="Analyzing Emotions...")
+        def get_all_emotions(conversation_list):
+            # Get emotions for all speakers (not just selection)
+            all_speakers = list({m["speaker"] for m in conversation_list})
+            return helper.emotion_analysis(conversation_list, all_speakers)
 
-        # 3) Call helper once
-        emos = helper.emotion_analysis(conversation_list, participants_arg)
+        all_emotions = get_all_emotions(conversation_list)
 
-        # 4) Build DataFrame & drop any duplicate speaker rows
-        df_emos = pd.DataFrame(emos).drop_duplicates(subset="speaker")
+        # 3) Build DataFrame and filter for selected participants
+        df_emos = pd.DataFrame(all_emotions).drop_duplicates(subset="speaker")
         df_emos = df_emos.rename(columns={
             "speaker": "Participant",
             "primary_emotion": "Primary Emotion",
             "secondary_emotion": "Secondary Emotion"
         })
 
-        # 5) Display table without index
-        st.dataframe(df_emos, hide_index=True)
+        # If "Everyone" in selection or nothing selected, show all; else filter
+        if "Everyone" in emo_parts or not emo_parts:
+            df_emos_show = df_emos
+        else:
+            df_emos_show = df_emos[df_emos["Participant"].isin(emo_parts)]
 
+        # 4) Display table without index (use hide_index=True for Streamlit 1.22+)
+        st.dataframe(df_emos_show, hide_index=True, use_container_width=True)
 
-        # 6) Write follow-up sentences by column name
-        for _, row in df_emos.iterrows():
+        # 5) Write follow-up sentences by column name
+        for _, row in df_emos_show.iterrows():
             p  = row["Participant"]
             pe = row["Primary Emotion"] or "no clear primary emotion"
             se = row["Secondary Emotion"]
             if se:
-                st.markdown(f"""<p style="font-size:18px; line-height:1.3;"><strong>{p}</strong> is feeling <em><u>{pe}</u></em> and <em><u>{se}</u></em>.</p>""",unsafe_allow_html=True)
+                st.markdown(
+                    f"""<p style="font-size:18px; line-height:1.3;"><strong>{p}</strong> is feeling <em><u>{pe}</u></em> and <em><u>{se}</u></em>.</p>""",
+                    unsafe_allow_html=True
+                )
             else:
-                st.markdown(f"""<p style="font-size:18px; line-height:1.3;"><strong>{p}</strong> is feeling <em><u>{pe}</u></em>.</p>""",unsafe_allow_html=True)
+                st.markdown(
+                    f"""<p style="font-size:18px; line-height:1.3;"><strong>{p}</strong> is feeling <em><u>{pe}</u></em>.</p>""",
+                    unsafe_allow_html=True
+                )
 
 
-# — RELATIONSHIP ANALYSIS —
+    # — RELATIONSHIP ANALYSIS —
     if run_rel_btn:
         df_placeholder.empty()
         st.subheader("🔗 Relationship Analysis")
 
+        # 1. Display the visual legend bar (optional, as before)
         intervals = [-1, -0.8, -0.1, 0.1, 0.8, 1]
         labels = [
             "Strongly Disagree\n[-1, -0.8]",
@@ -616,15 +651,41 @@ if uploaded_file is not None:
         ax.axis('off')
         st.pyplot(fig)
 
-
-        # 1) Build a single conversation list (same as emotion)
+        # 2. Prepare the conversation list
         df_clean = preprocessor.clean_translated_messages(df_analysis)
         conversation_list = [
             {"speaker": r["Speaker"], "message": r["Translated_Message"], "index": int(r["msg_index"])}
             for _, r in df_clean.iterrows()
         ]
 
-        # 2) Helper to map score → label
+        # 3. Compute and cache all relationships once
+        @st.cache_resource(show_spinner="Analyzing Realtionships...")
+        def get_all_relationships(conversation_list, participant_options):
+            all_parts = [p for p in participant_options if p != "Everyone"]
+            return helper.relationship_analysis(conversation_list, all_parts, all_combinations=True)
+
+        all_relationships = get_all_relationships(conversation_list, participant_options)
+
+        # 4. Filtering logic per your rules:
+        all_participants = [p for p in participant_options if p != "Everyone"]
+
+        if all_combinations:
+            # All combinations: ignore selection, show all possible pairs
+            wanted_sets = [set(pair) for pair in itertools.combinations(all_participants, 2)]
+            rels = [r for r in all_relationships if set((r["speaker1"], r["speaker2"])) in wanted_sets]
+        else:
+            selected = rel_parts
+            if len(selected) == 1:
+                # Show all pairs involving this participant
+                rels = [r for r in all_relationships if selected[0] in (r["speaker1"], r["speaker2"])]
+            elif len(selected) > 1:
+                # Show all pairs among selected (nC2)
+                wanted_sets = [set(pair) for pair in itertools.combinations(selected, 2)]
+                rels = [r for r in all_relationships if set((r["speaker1"], r["speaker2"])) in wanted_sets]
+            else:
+                rels = []
+
+        # 5. Relationship score to label mapping
         def describe(score: float) -> str:
             if score >= 0.8:
                 return "Strongly Agree"
@@ -637,24 +698,32 @@ if uploaded_file is not None:
             else:
                 return "Strongly Disagree"
 
-        # 3) Compute relationships
-        rels = []
-        if len(rel_parts) == 1:
-            # one participant => pair with every other speaker
-            sp1 = rel_parts[0]
-            others = [p for p in participant_options if p not in ("Everyone", sp1)]
-            for sp2 in others:
-                pair = helper.relationship_analysis(conversation_list, [sp1, sp2], False)
-                rels.extend(pair)
+        # 6. Display output or info message
+        if not rels:
+            st.info("No pairs available for the current selection.")
+        elif all_combinations:
+            table_data = [
+                {
+                    "Participant-1": r["speaker1"],
+                    "Participant-2": r["speaker2"],
+                    "Relationship": describe(r["agreement_score"]),
+                    "Agreement Score": round(r["agreement_score"], 4)
+                }
+                for r in rels
+            ]
+            df_table = pd.DataFrame(table_data)
+            df_table = df_table.sort_values("Agreement Score", ascending=True).reset_index(drop=True)
+            # For Streamlit 1.22+, index is hidden:
+            st.dataframe(df_table, use_container_width=True, hide_index=True)
         else:
-            # two or more => use helper directly
-            rels = helper.relationship_analysis(conversation_list, rel_parts, all_combo)
-
-        # 4) Display
-        for r in rels:
-            s1 = r["speaker1"]
-            s2 = r["speaker2"]
-            score = r["agreement_score"]
-            label = describe(score)
-
-            st.markdown(f"""<p style="font-size:22px; line-height:1.3;"><strong>{s1}</strong> and <strong>{s2}</strong> <em>{label}</em> with each other.<br><u>[ Agreement Score is {score:.4f} ]</u></p>""",unsafe_allow_html=True)
+            for r in rels:
+                s1 = r["speaker1"]
+                s2 = r["speaker2"]
+                score = r["agreement_score"]
+                label = describe(score)
+                st.markdown(
+                    f"""<p style="font-size:22px; line-height:1.3;">
+                    <strong>{s1}</strong> and <strong>{s2}</strong> <em>{label}</em> with each other.<br>
+                    <u>[ Agreement Score is {score:.4f} ]</u></p>""",
+                    unsafe_allow_html=True
+                )

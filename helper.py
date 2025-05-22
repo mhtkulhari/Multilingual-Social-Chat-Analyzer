@@ -27,6 +27,8 @@ from app.ml_models.summary_model.config import (DEFAULT_MODEL_NAME,DEFAULT_MODEL
 from google.api_core.exceptions import NotFound
 
 #1
+
+@st.cache_data
 def fetch_stats(selected_Speaker,df):
 
     if selected_Speaker != 'Everyone':
@@ -63,6 +65,8 @@ def fetch_stats(selected_Speaker,df):
     return num_Messages,num_media_Messages,len(links),longest_msg, avg_words, active_days, most_common_emoji
 
 #2
+
+@st.cache_data
 def monthly_timeline(selected_Speaker,df):
 
     if selected_Speaker != 'Everyone':
@@ -79,6 +83,8 @@ def monthly_timeline(selected_Speaker,df):
     return timeline
 
 #3
+
+@st.cache_data
 def daily_timeline(selected_Speaker, df):
     if selected_Speaker != 'Everyone':
         df = df[df['Speaker'] == selected_Speaker]
@@ -95,6 +101,8 @@ def daily_timeline(selected_Speaker, df):
     return daily_timeline
 
 #4
+
+@st.cache_data
 def week_activity_map(selected_Speaker,df):
 
     if selected_Speaker != 'Everyone':
@@ -103,6 +111,8 @@ def week_activity_map(selected_Speaker,df):
     return df['day_name'].value_counts()
 
 #5
+
+@st.cache_data
 def month_activity_map(selected_Speaker,df):
 
     if selected_Speaker != 'Everyone':
@@ -112,6 +122,8 @@ def month_activity_map(selected_Speaker,df):
 
 
 #6
+
+@st.cache_data
 def activity_heatmap(selected_Speaker, df):
     d = df if selected_Speaker == 'Everyone' else df[df['Speaker'] == selected_Speaker]
     pt = d.pivot_table(
@@ -244,6 +256,8 @@ def plot_most_busy_speakers(filtered_df, selected_Speaker, total_df):
 
 
 #8
+
+@st.cache_data
 def create_wordcloud(selected_Speaker, df):
     try:
         # Filter by speaker if needed
@@ -286,12 +300,11 @@ def create_wordcloud(selected_Speaker, df):
 
         return wc
     except Exception as e:
-        # Optionally log the error, for debugging:
-        # import streamlit as st
-        # st.write(f"Wordcloud generation error: {e}")
         return None
 
 #9
+
+@st.cache_data
 def most_common_words(selected_Speaker, df):
     if selected_Speaker != 'Everyone':
         df = df[df['Speaker'] == selected_Speaker]
@@ -319,6 +332,8 @@ def most_common_words(selected_Speaker, df):
 
 
 #10
+
+@st.cache_data
 def emoji_helper(selected_Speaker, df):
     if selected_Speaker != 'Everyone':
         df = df[df['Speaker'] == selected_Speaker]
@@ -345,6 +360,7 @@ def clean_text_for_lang_detection(text):
     # Remove extra whitespace
     return text.strip()
 
+@st.cache_data
 def detect_language_api(text):
     """
     Detects the dominant language in `text` using Gemini,
@@ -380,9 +396,11 @@ def detect_language_api(text):
         return "Language Detection is taking too long. Meanwhile, explore other features!"
 
 
+
+@st.cache_data
 def get_dominant_language_single(df):
     """
-    Uses the *first 5 cleaned messages* for a participant to detect dominant language.
+    Uses the *first 3 cleaned messages* for a participant to detect dominant language.
     On any error, returns a custom message.
     """
     try:
@@ -398,13 +416,15 @@ def get_dominant_language_single(df):
         cleaned = [m for m in cleaned if m]  # Only non-empty
         if not cleaned:
             return "Unknown"
-        sample = cleaned[:5]
+        sample = cleaned[:3]
         prompt_text = " ".join(sample)
         return detect_language_api(prompt_text)
     except Exception:
         return "Language Detection is taking too long. Meanwhile, explore other features!"
 
 
+
+@st.cache_data
 def get_dominant_language_all(df):
     """
     Returns list of dicts: [{speaker, language}, ...] for all participants.
@@ -423,7 +443,7 @@ def get_dominant_language_all(df):
 
 
 #AI ANALYSIS
-
+@st.cache_data(show_spinner="Generating Summary...")
 def summarize_conversation(conversation, participants, style="Detailed"):
     """
     style:
@@ -479,7 +499,7 @@ def summarize_conversation(conversation, participants, style="Detailed"):
 
 # configure once
 genai.configure(api_key=GEMINI_API_KEY)
-
+@st.cache_data(show_spinner="Generating Summary...")
 def translate_summary(text: str, target_lang: str) -> str:
     """
     Translates `text` into `target_lang` and returns only the translated text.
@@ -583,11 +603,10 @@ def relationship_analysis(conversation, participants, all_combinations=False):
     """
     Returns agreement scores for each speaker-pair.
     If all_combinations=False and exactly two participants are chosen,
-    returns only that pair; otherwise returns all pairs.
+    returns only that pair; otherwise returns all pairs among provided participants.
     If any error occurs, shows a warning and returns [].
     """
     try:
-        # prepare embeddings + clusters
         encoder   = TextEncoderModel()
         clusterer = TextClusteringModel()
         agreer    = TextAgreementModel()
@@ -597,18 +616,17 @@ def relationship_analysis(conversation, participants, all_combinations=False):
         embeddings = encoder.calculate_embeddings(texts)
         labels     = clusterer.calculate_clusters(embeddings)
 
-        # group messages by cluster label
         clusters = {}
         for dlg, lbl in zip(dialogs, labels):
             if lbl != -1:
                 clusters.setdefault(lbl, []).append(dlg)
 
-        speakers = set(m["speaker"] for m in conversation)
+        speakers = set(participants)
         from itertools import combinations
         pairs    = list(combinations(speakers, 2))
 
         results = []
-        DECAY_FACTOR = 0.15  # Use your defined value if not global
+        DECAY_FACTOR = 0.95  # Or your chosen value
         import math
 
         for sp1, sp2 in pairs:
@@ -632,11 +650,10 @@ def relationship_analysis(conversation, participants, all_combinations=False):
                 "agreement_score": score
             })
 
-        # if exactly two chosen & not all_combinations, filter to that pair
+        # If exactly two chosen & not all_combinations, filter to that pair
         if not all_combinations and len(participants) == 2:
             want = set(participants)
-            results = [r for r in results
-                       if set((r["speaker1"], r["speaker2"])) == want]
+            results = [r for r in results if set((r["speaker1"], r["speaker2"])) == want]
 
         return results
     except Exception:
