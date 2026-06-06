@@ -1,7 +1,7 @@
 pandas
 google-cloud-translate
 tqdm
-streamlit
+streamlit==1.40.0
 matplotlib
 seaborn
 urlextract
